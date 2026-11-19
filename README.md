@@ -1,18 +1,116 @@
-﻿# 虚拟人生
+# 虚拟人生（Agent Life OS）
 
-**简介**：虚拟人生 (Agent Life OS)：让虚拟人在桌面系统里生活、赚钱，拥有邮箱/电话/支付/3D形象
+**0.5.0** · AI 虚拟人观察舱：让虚拟人在桌面系统里生活，拥有世界、钱包、邮箱/通信与第一人称电脑，并可对照平行世界。
 
-**最新版本**：0.1.0
+## 界面截图
 
-## 文件清单
+![总览](src/docs/screenshot-overview.png)
 
-| 目录 | 文件 | 大小 | SHA256 |
-|---|---|---|---|
-| 安装包 | AgentLifeOS-Setup-0.1.0-x64.exe | 78.6 MB | `5240A9C5E5F36B919C6BDBD6F255F5FCA30CB7986A08C7ADD95550903AB18116` |
-| 源代码 | agent-life-os-source.zip | 12.4 MB | `B90CDE00946FA1D552C13D00EBD4CC177B897232A909AACFA9907FDDF5C4112E` |
+*总览 / Overview*
 
-## 安装 / 运行
+![世界](src/docs/screenshot-world.png)
 
-运行 安装包\AgentLifeOS-Setup-0.1.0-x64.exe 安装
+*世界 / World*
 
-_整理时间：2026-10-14 16:05；原始文件仍保留在原位置，见上级目录 待删除清单.txt_
+![第一人称桌面](src/docs/screenshot-desktop.png)
+
+*第一人称桌面 / First-person desktop*
+
+![钱包](src/docs/screenshot-wallet.png)
+
+*钱包 / Wallet*
+
+## 功能特性
+
+- 观察舱总览、世界、人生与文明维度。
+- 钱包与身份；可对比不同世界线。
+- 第一人称电脑桌面，含审批、回放与 VNC 等能力（见 `src/docs/screenshot-desktop-*.png`）。
+- 引导流程与新建智能体。Electron + React + Three.js。
+
+## 技术栈
+
+- Electron
+- React + Vite + TypeScript
+- Three.js / 3d-tiles-renderer
+
+## 从源码运行
+
+源码在 `src/`。本仓库不包含安装包。
+
+```bash
+cd src
+npm install
+npm run dev
+npm test
+npm run build
+```
+
+## 文档
+
+- [源码 README](src/README.md)
+- [设计文档](src/设计文档.md)
+
+## 许可证
+
+`src/package.json` 声明为 MIT。仓库根目录未附带 LICENSE 文件。
+
+---
+
+## English
+
+# Agent Life OS
+
+**0.5.0** · An observation deck for AI virtual persons: they live in a desktop world with a wallet, communications, a first-person computer, and parallel universes you can compare.
+
+## Screenshots
+
+![Overview](src/docs/screenshot-overview.png)
+
+*总览 / Overview*
+
+![World](src/docs/screenshot-world.png)
+
+*世界 / World*
+
+![First-person desktop](src/docs/screenshot-desktop.png)
+
+*第一人称桌面 / First-person desktop*
+
+![Wallet](src/docs/screenshot-wallet.png)
+
+*钱包 / Wallet*
+
+## Features
+
+- Observation overview, world, life, and civilization dimensions.
+- Wallet and identity, plus comparison across world-lines.
+- A first-person computer desktop, including approval, replay, and VNC views (see `src/docs/screenshot-desktop-*.png`).
+- Onboarding and new-agent flows. Electron + React + Three.js.
+
+## Tech stack
+
+- Electron
+- React + Vite + TypeScript
+- Three.js / 3d-tiles-renderer
+
+## Getting started
+
+Source is under `src/`. This repository does not include installers.
+
+```bash
+cd src
+npm install
+npm run dev
+npm test
+npm run build
+```
+
+## Documentation
+
+- [源码 README](src/README.md)
+- [设计文档](src/设计文档.md)
+
+## License
+
+`src/package.json` declares MIT. There is no LICENSE file at the repository root.
+
