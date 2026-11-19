@@ -114,7 +114,6 @@ npm install
 npm run build      # 构建界面
 npm start          # 启动 Electron 观察舱（默认是模拟世界 + 规则大脑，不需要任何账号）
 ```
-
 开发模式（热更新）：`npm run dev`
 
 > 在 Linux 容器或没有沙盒的环境里启动不了时，可以改用 `ALOS_NO_SANDBOX=1 npm start`。
@@ -155,7 +154,6 @@ npm run e2e       # 端到端：Playwright 点击真实窗口走完引导→点�
                   # 重启续存→孵化新智能体→10 分钟长跑（E2E_SOAK_MS 可调）→真实 VNC 绑定/接管；截图与 GIF 写入 docs/e2e/
 npm run sim -- 我的种子 40   # 在命令行跑 40 步（CLI 模式下支出请求自动拒绝）
 ```
-
 ## 目录结构
 ```
 core/            引擎（纯 Node，不依赖 Electron 也能运行）
@@ -174,6 +172,5 @@ scripts/         vnc-demo.sh（Xvfb + Chrome + x11vnc 演示电脑）、run-sim.
 docs/            截图与评审报告（docs/reviews/）
 设计文档.md       设计与调研
 ```
-
 ## 下一步
 见设计文档第 7 节路线图：VNC 的 TLS/VeNCrypt 与 Tight/ZRLE 编码、OpenAI / Anthropic 原生 computer-use 工具、SQLite 记忆、把 Stripe 实时授权 Webhook 接进审批队列、用 Meshy / Tripo 生成 GLB 形象、多智能体。

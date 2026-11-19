@@ -4,19 +4,19 @@
 
 ## 界面截图
 
-![总览](src/docs/screenshot-overview.png)
+![总览](docs/screenshot-overview.png)
 
 *总览 / Overview*
 
-![世界](src/docs/screenshot-world.png)
+![世界](docs/screenshot-world.png)
 
 *世界 / World*
 
-![第一人称桌面](src/docs/screenshot-desktop.png)
+![第一人称桌面](docs/screenshot-desktop.png)
 
 *第一人称桌面 / First-person desktop*
 
-![钱包](src/docs/screenshot-wallet.png)
+![钱包](docs/screenshot-wallet.png)
 
 *钱包 / Wallet*
 
@@ -24,7 +24,7 @@
 
 - 观察舱总览、世界、人生与文明维度。
 - 钱包与身份；可对比不同世界线。
-- 第一人称电脑桌面，含审批、回放与 VNC 等能力（见 `src/docs/screenshot-desktop-*.png`）。
+- 第一人称电脑桌面，含审批、回放与 VNC 等能力（见 `docs/screenshot-desktop-*.png`）。
 - 引导流程与新建智能体。Electron + React + Three.js。
 
 ## 技术栈
@@ -35,24 +35,22 @@
 
 ## 从源码运行
 
-源码在 `src/`。本仓库不包含安装包。
+源码在仓库根目录。本仓库不包含安装包。
 
 ```bash
-cd src
 npm install
 npm run dev
 npm test
 npm run build
 ```
-
 ## 文档
 
-- [源码 README](src/README.md)
-- [设计文档](src/设计文档.md)
+- [源码 README](README.original.md)
+- [设计文档](设计文档.md)
 
 ## 许可证
 
-`src/package.json` 声明为 MIT。仓库根目录未附带 LICENSE 文件。
+`package.json` 声明为 MIT。仓库根目录未附带 LICENSE 文件。
 
 ---
 
@@ -64,19 +62,19 @@ npm run build
 
 ## Screenshots
 
-![Overview](src/docs/screenshot-overview.png)
+![Overview](docs/screenshot-overview.png)
 
 *总览 / Overview*
 
-![World](src/docs/screenshot-world.png)
+![World](docs/screenshot-world.png)
 
 *世界 / World*
 
-![First-person desktop](src/docs/screenshot-desktop.png)
+![First-person desktop](docs/screenshot-desktop.png)
 
 *第一人称桌面 / First-person desktop*
 
-![Wallet](src/docs/screenshot-wallet.png)
+![Wallet](docs/screenshot-wallet.png)
 
 *钱包 / Wallet*
 
@@ -84,7 +82,7 @@ npm run build
 
 - Observation overview, world, life, and civilization dimensions.
 - Wallet and identity, plus comparison across world-lines.
-- A first-person computer desktop, including approval, replay, and VNC views (see `src/docs/screenshot-desktop-*.png`).
+- A first-person computer desktop, including approval, replay, and VNC views (see `docs/screenshot-desktop-*.png`).
 - Onboarding and new-agent flows. Electron + React + Three.js.
 
 ## Tech stack
@@ -95,22 +93,20 @@ npm run build
 
 ## Getting started
 
-Source is under `src/`. This repository does not include installers.
+Source is at the repository root. This repository does not include installers.
 
 ```bash
-cd src
 npm install
 npm run dev
 npm test
 npm run build
 ```
-
 ## Documentation
 
-- [源码 README](src/README.md)
-- [设计文档](src/设计文档.md)
+- [源码 README](README.original.md)
+- [设计文档](设计文档.md)
 
 ## License
 
-`src/package.json` declares MIT. There is no LICENSE file at the repository root.
+`package.json` declares MIT. There is no LICENSE file at the repository root.
 
