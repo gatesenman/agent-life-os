@@ -1,0 +1,38 @@
+{
+  "name": "agent-life-os",
+  "version": "0.5.0",
+  "description": "Agent Life OS — AI 虚拟人观察舱（第一人称电脑 + 平行世界）",
+  "main": "electron/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV=1 electron .\"",
+    "build": "vite build",
+    "start": "electron .",
+    "test": "node test/headless.test.js && node test/llm-mock.test.js && node test/multiverse.test.js && node test/life.test.js && node test/desktop.test.js && node test/no-emoji.test.js && node test/memory.test.js",
+    "smoke": "node test/electron-smoke.js",
+    "e2e": "vite build && node test/e2e.js",
+    "sim": "node scripts/run-sim.js",
+    "dist:win": "vite build && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "3d-tiles-renderer": "^0.4.28",
+    "framer-motion": "^11.18.2",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "playwright": "^1.64.1",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "author": "GAOSICHUN"
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN" translate="no"><head><meta charset="utf-8"><meta name="google" content="notranslate"><title>VNC 演示：速达外卖（本机网页）</title>
+<style>
+  body { margin: 0; font-family: 'Noto Sans CJK SC', 'PingFang SC', sans-serif; background: #f5f6f8; color: #1d1f24; }
+  header { height: 110px; background: linear-gradient(120deg, #ffb347, #ff7a59); color: #fff; padding: 26px 40px; box-sizing: border-box; }
+  header h1 { margin: 0; font-size: 30px; } header p { margin: 6px 0 0; opacity: .9; }
+  main { padding: 30px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .dish { background: #fff; border-radius: 14px; padding: 22px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .dish b { font-size: 20px; } button { font: inherit; font-size: 18px; border: 0; border-radius: 10px; padding: 12px 22px; background: #ff7a59; color: #fff; cursor: pointer; }
+  #note { grid-column: 1 / -1; font-size: 18px; padding: 14px; border: 1px solid #ccd; border-radius: 10px; }
+  #status { grid-column: 1 / -1; font-size: 22px; padding: 20px; border-radius: 12px; background: #fff; }
+  #status.ok { background: #2fb36d; color: #fff; }
+</style></head>
+<body>
+  <header><h1>速达外卖 · 本机网页</h1><p>这是运行在真实 VNC 桌面里的普通网页（Chrome），用于验证坐标级操作</p></header>
+  <main>
+    <div class="dish"><b>猪肉白菜水饺 $3.00</b><button id="add" onclick="add()">加入购物车</button></div>
+    <div class="dish"><b>番茄炒蛋饭 $3.20</b><button onclick="add()">加入购物车</button></div>
+    <input id="note" placeholder="备注（例如：不要香菜）">
+    <div id="status">购物车为空</div>
+  </main>
+  <script>
+    let n = 0;
+    function add() { n++; const s = document.getElementById('status'); s.textContent = '购物车 ' + n + ' 件，备注：' + (document.getElementById('note').value || '无'); s.className = 'ok'; document.title = 'CART=' + n; }
+  </script>
+</body></html>

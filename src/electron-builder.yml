@@ -1,0 +1,28 @@
+appId: os.agentlife.observer
+productName: Agent Life OS
+copyright: MIT
+directories:
+  output: ../agent-life-os-release/build
+  buildResources: build
+files:
+  - package.json
+  - electron/**
+  - core/**
+  - dist/**
+  - src/assets/geo/**
+  - "!**/node_modules/**"
+asar: true
+win:
+  signAndEditExecutable: false
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: AgentLifeOS-Setup-${version}-x64.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Agent Life OS
+  language: "2052"
+  installerLanguages: [zh_CN, en_US]
