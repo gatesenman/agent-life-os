@@ -3,3 +3,18 @@ dist
 .env
 .alos-data*
 smoke.png
+
+# Additional hygiene
+.DS_Store
+Thumbs.db
+.env.local
+.env.*.local
+target/
+dist/
+logs/
+*.log
+.venv/
+__pycache__/
+coverage/
+!.env.example
+!.env.example.*

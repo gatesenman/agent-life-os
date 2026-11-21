@@ -45,8 +45,15 @@ npm run build
 ```
 ## 文档
 
-- [源码 README](README.original.md)
+- [概览](docs/screenshot-overview.png)
+- [`设计文档.md`](设计文档.md)
+- [`docs/reviews/04-产品经理深度优化.md`](docs/reviews/04-产品经理深度优化.md)
 - [设计文档](设计文档.md)
+
+
+## 贡献
+
+欢迎通过 Issue 和 Pull Request 参与，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。参与时请遵守 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
 
 ## 许可证
 
@@ -103,10 +110,16 @@ npm run build
 ```
 ## Documentation
 
-- [源码 README](README.original.md)
+- [概览](docs/screenshot-overview.png)
+- [`设计文档.md`](设计文档.md)
+- [`docs/reviews/04-产品经理深度优化.md`](docs/reviews/04-产品经理深度优化.md)
 - [设计文档](设计文档.md)
+
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities privately via [SECURITY.md](SECURITY.md). This project follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
 `package.json` declares MIT. There is no LICENSE file at the repository root.
-
