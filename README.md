@@ -2,7 +2,13 @@
 
 **0.5.0** · AI 虚拟人观察舱：让虚拟人在桌面系统里生活，拥有世界、钱包、邮箱/通信与第一人称电脑，并可对照平行世界。
 
+## 下载
+
+当前 GitHub 上**没有**已发布安装包（无 Release）。`package.json` 版本为 **0.5.0**。Windows 打包可用 `npm run dist:win`。本轮因磁盘不足未打包上传。
+
 ## 界面截图
+
+以下为仓库 `docs/screenshot-*.png` 中已有的真实产品界面，不是生成图。另有评审记录中的对照图见 `docs/reviews/`（含 v0.4.1 等，未全部嵌入）。
 
 ![总览](docs/screenshot-overview.png)
 
@@ -35,7 +41,7 @@
 
 ## 从源码运行
 
-源码在仓库根目录。本仓库不包含安装包。
+源码在仓库根目录。本仓库目前不提供已发布安装包。需要安装包时在可构建环境执行 `npm run dist:win`（本轮未执行）。
 
 ```bash
 npm install
@@ -67,7 +73,13 @@ npm run build
 
 **0.5.0** · An observation deck for AI virtual persons: they live in a desktop world with a wallet, communications, a first-person computer, and parallel universes you can compare.
 
+### Download
+
+No published installer on GitHub Releases. Version **0.5.0**. Package with `npm run dist:win`. This pass did not build or upload packages (disk).
+
 ## Screenshots
+
+The images below are existing real product UI captures in `docs/screenshot-*.png`. They are not generated. Additional review shots live in `docs/reviews/`.
 
 ![Overview](docs/screenshot-overview.png)
 
@@ -100,7 +112,7 @@ npm run build
 
 ## Getting started
 
-Source is at the repository root. This repository does not include installers.
+Source is at the repository root. There is no published installer. To package on a build machine, run `npm run dist:win` (not run in this pass).
 
 ```bash
 npm install
