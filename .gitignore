@@ -18,3 +18,27 @@ __pycache__/
 coverage/
 !.env.example
 !.env.example.*
+
+# Local state, recordings and generated test media never belong in a public release
+.env.*
+!.env.example
+!.env.example.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.qcow2
+*.vmdk
+*.vdi
+*.exe
+*.zip
+*.mp4
+*.webm
+*.gif
+userData/
+recordings/
+desktop-targets.json
+multiverse.json*
+docs/e2e/*
+!docs/e2e/results.json
+!docs/validation/**/*.log

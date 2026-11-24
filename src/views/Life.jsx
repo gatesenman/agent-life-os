@@ -4,6 +4,7 @@ import { HeartPulse, Network, Dna, Brain, Smile, Frown, Siren, Flame, Skull, Bab
 import { Card, Stat, Meter, Badge } from '../components/ui.jsx';
 import { AnimatedNumber, spring } from '../components/motion.jsx';
 import FamilyTree from '../components/FamilyTree.jsx';
+import TalkPanel from '../components/TalkPanel.jsx';
 
 const STAGES = ['婴儿', '童年', '少年', '青年', '成年', '中年', '老年'];
 const TRAIT = { openness: '开放', conscientiousness: '尽责', extraversion: '外向', agreeableness: '宜人', neuroticism: '敏感', risk_tolerance: '冒险', frugality: '节俭', curiosity: '好奇', vitality: '体质', intelligence: '智力' };
@@ -31,7 +32,7 @@ function Pyramid({ needs }) {
   );
 }
 
-export default function Life({ s, mv, setView }) {
+export default function Life({ s, mv, setView, c }) {
   const L = s.life; const [pick, setPick] = useState(null);
   const world = mv.worlds.find((w) => w.worldId === mv.activeId);
   if (!L) return null;
@@ -89,6 +90,7 @@ export default function Life({ s, mv, setView }) {
           {node && <button className="link" onClick={() => setPick(null)}>返回主角基因</button>}
         </Card>
       </div>
+      <TalkPanel s={s} c={typeof c === 'function' ? c : undefined} personId={pick?.id} onPerson={(id) => setPick(L.family.nodes.find((n) => n.id === id) || { id })} />
       <div className="life-row">
         <Card title="世代时间线" icon={Hourglass} className="grow">
           <div className="gen-tl">

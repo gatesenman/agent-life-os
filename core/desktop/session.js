@@ -93,12 +93,14 @@ class DesktopSession extends EventEmitter {
   async bind(target) {
     if (this.goal && this.target && this.target.id !== target.id) this.finishGoal('failed', `换到了「${target.name}」，放弃当前目标`);
     this.unbind();
+    this.sessionId = crypto.randomUUID();
     this.target = target;
     if (target.kind === 'sandbox') this.driver = new SandboxDriver(this.os);
     else { this.driver = new VncDriver(target); this.driver.on('frame', () => this.emit('frame')); this.driver.on('status', () => this.emit('status')); try { await this.driver.connect(); } catch { /* 状态里有错误，界面显示 */ } }
     return this.driver.status;
   }
-  unbind() { this.driver?.close(); this.driver = null; this.target = null; }
+  invalidateExecution() { this.executionEpoch = (this.executionEpoch || 0) + 1; }
+  unbind() { this.invalidateExecution(); this.payHold = null; this.payCleared = false; this.driver?.close(); this.driver = null; this.target = null; }
   // ---------- 目标：由生命需求产生 ----------
   chooseGoal(ctx) {
     const { hunger, energy, wallet, policy } = ctx; const bal = wallet.balance; const left = policy.dailyCapUsd - policy.spentToday;
@@ -143,9 +145,14 @@ class DesktopSession extends EventEmitter {
 
   // ---------- 一次 computer-use 步骤 ----------
   async tick(ctx) {
+    const driver = this.driver, epoch = this.executionEpoch || 0;
+    const cancelled = () => epoch !== (this.executionEpoch || 0) || driver !== this.driver || this.held?.();
+    const held = () => ({ thought: '控制状态已改变，丢弃这次旧决策。', action: { type: 'wait', minutes: 0.2 }, source: 'held', result: { ok: true, message: '旧动作已取消，未发送键鼠指令', minutes: 0 }, verify: null, held: true });
+    if (!driver) return held();
     if (this.driver.kind === 'sandbox') this.os.tick(ctx.absMinutes, ctx.clock);
     let obs;
     try { obs = await this.driver.observe(); } catch (e) { return this.outcome(ctx, { thought: `连接不到这台电脑：${e.message}`, action: { type: 'wait', minutes: 5, reason: '等待电脑恢复连接' } }, null, { ok: false, message: e.message, minutes: 5 }); }
+    if (cancelled()) return held();
     if (this.rejectPending) { this.mem.rejectAt = ctx.absMinutes; this.rejectPending = false; if (this.goal?.kind === 'eat' && this.driver.kind === 'sandbox') this.finishGoal('failed', '守护者拒绝了这笔外卖，先去做别的事'); }
     if (!this.goal) this.startGoal(this.chooseGoal(ctx), ctx);
     this.goal.lastClock = ctx.clock; this.goal.steps++;
@@ -157,7 +164,9 @@ class DesktopSession extends EventEmitter {
     if (!d.action || !ACTION_TYPES.includes(d.action.type)) d = { ...d, thought: (d.thought || '') + `（无效动作 ${d.action?.type}，改为等待）`, action: { type: 'wait', minutes: 1 } };
     if (d.step) this.setStep(d.step);
     // L18：模型思考期间守护者接管了电脑 → 这一步作废，不执行任何动作
+    if (cancelled()) return held();
     if (this.held?.()) return { thought: '守护者接管了这台电脑，我停下手，等交还控制。', action: { type: 'wait', minutes: 0.2, reason: '守护者接管中' }, source: 'held', result: { ok: true, message: '守护者接管中，未执行动作', minutes: 0.2 }, verify: null, held: true };
+    d = this.maybeInterceptPayment(d, obs, ctx);
     if (d.finish) { const res = { ok: true, message: d.finish.note || '目标完成', minutes: 0.2 }; const out = this.outcome(ctx, d, obs, res); this.finishGoal(d.finish.status || 'done', d.finish.note); return out; }
     // 执行
     let res;
@@ -190,7 +199,7 @@ class DesktopSession extends EventEmitter {
     const a = { id: ++this.aseq, clock: ctx.clock, action: d.action, thought: d.thought, result: res.message, ok: res.ok, verify, source: d.source, step: this.goal?.plan.find((s) => s.status === 'active')?.title };
     this.lastAction = a; this.actions.push(a); if (this.actions.length > 60) this.actions.shift();
     if (d.thought) this.say(d.thought, d.source === 'llm' ? 'llm' : 'thought');
-    if (this.rec) { this.rec.steps.push({ ...a, frame: this.driver.frameForRecording() }); if (this.rec.steps.length > 120) this.rec.steps.shift(); }
+    if (this.rec) { this.rec.steps.push({ ...a, frame: this.driver?.frameForRecording() }); if (this.rec.steps.length > 120) this.rec.steps.shift(); }
     return { thought: d.thought, source: d.source, action: d.action, result: { minutes: 0.5, ...res }, verify, idle: d.idle };
   }
 
@@ -302,7 +311,48 @@ class DesktopSession extends EventEmitter {
   }
   reliability() { const r = this.rel; const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null); return { ...r, verifyRate: pct(r.verifyOk, r.verified), goalRate: pct(r.done, r.done + r.failed) }; }
   // ---------- 外部事件 ----------
-  onPayment(ref, outcome, info) { if (ref.kind !== 'vnc') this.os.onPayment(ref, outcome, info); if (outcome === 'rejected') this.rejectPending = true; this.approvalNote = outcome === 'paid' ? `守护者已批准并完成支付（凭证 ${info.tx}）` : outcome === 'denied' ? `支付被预算策略拒绝：${info.reason}` : '守护者拒绝了这笔支付'; this.say(`支付结果：${this.approvalNote}`, outcome === 'paid' ? 'done' : 'fail'); }
+  onPayment(ref, outcome, info) {
+    if (ref.kind !== 'vnc') this.os.onPayment(ref, outcome, info);
+    if (outcome === 'rejected') this.rejectPending = true;
+    if (outcome === 'paid') { this.payCleared = true; this.payHold = null; }
+    else { this.payHold = null; this.payCleared = false; }
+    this.approvalNote = outcome === 'paid' ? `守护者已批准并完成支付（凭证 ${info.tx}）` : outcome === 'denied' ? `支付被预算策略拒绝：${info.reason}` : '守护者拒绝了这笔支付';
+    this.say(`支付结果：${this.approvalNote}`, outcome === 'paid' ? 'done' : 'fail');
+  }
+  // 支付拦截（尽力而为）：内置沙盒的结算按钮本身只发起审批、不扣款。
+  // 绑定真实 VNC 虚拟机时，无法从协议层阻止机内已经发生的支付，所以在发送点击前，
+  // 若观察/思考/目标含有支付语义，则把动作改写成 request_payment，点击不会发到虚拟机。
+  maybeInterceptPayment(d, obs, ctx) {
+    if (!d?.action) return d;
+    if (d.action.type === 'request_payment' && this.payHold && !this.payCleared) return { ...d, action: { type: 'wait', minutes: 2, reason: '已有待审批付款' }, intercept: 'hold' };
+    if (d.action.type === 'request_payment') {
+      this.payCleared = false;
+      this.payHold = { amount: d.action.amount, merchant: d.action.merchant, memo: d.action.memo, at: ctx.absMinutes };
+      return d;
+    }
+    if (!['click', 'double_click', 'type', 'key'].includes(d.action.type)) return d;
+    // 只根据当前思考、屏幕和步骤判断；目标说明里的「付款前必须申请审批」不能作为拦截依据
+    const hay = [obs?.text, d.thought, d.step].join('\n');
+    const PAY = /确认支付|提交订单并支付|立即付款|去付款|结账并支付|checkout|pay now|buy now|place order|微信支付|支付宝|信用卡|card number|\bcvv\b/i;
+    const suspicious = PAY.test(hay) || (this.driver?.kind === 'vnc' && /submit|checkout|结算/.test(String(d.step || '')));
+    if (this.payHold && !this.payCleared) {
+      return { ...d, thought: (d.thought || '') + '（支付拦截：上一笔付款仍在等待守护者批准，不会向这台电脑发送可能完成付款的操作。）', action: { type: 'wait', minutes: 2, reason: '等待支付审批' }, intercept: 'hold' };
+    }
+    if (!suspicious) return d;
+    if (this.driver?.kind === 'sandbox') return d; // 沙盒结算路径已经返回 payment，由引擎走审批
+    if (this.payCleared) { this.payCleared = false; return d; } // 一次批准只放行一次疑似支付动作，不成为永久通行证
+    const amt = this.extractAmount(hay);
+    if (!amt) return { ...d, thought: '疑似付款但无法确认金额，请守护者接管核对；未发送原动作。', action: { type: 'wait', minutes: 2, reason: '付款金额不明确' }, intercept: 'unknown-amount' };
+    const blocked = d.action;
+    const req = { type: 'request_payment', amount: amt, merchant: this.target?.name || 'VNC 商户', memo: '电脑内疑似支付（系统已拦截点击，批准前不会向虚拟机发送该操作）' };
+    this.payHold = { ...req, at: ctx.absMinutes };
+    this.intercepts = this.intercepts || [];
+    this.intercepts.push({ at: Date.now(), clock: ctx.clock, thought: (d.thought || '').slice(0, 80), blocked, request: req });
+    if (this.intercepts.length > 20) this.intercepts.shift();
+    this.say('系统拦截了一次疑似支付操作，已改为审批申请。真实虚拟机上已经发出的支付无法被彻底阻止，请只用测试卡或演示账户。', 'warn');
+    return { ...d, thought: (d.thought || '') + '（系统拦截：疑似支付操作已改为审批申请，点击未发送到电脑。）', action: req, intercept: 'block', blocked };
+  }
+  extractAmount(s) { const m = String(s || '').match(/\$(\d+(?:\.\d{1,2})?)/) || String(s || '').match(/(\d+(?:\.\d{1,2})?)\s*元/); return m && Number.isFinite(+m[1]) && +m[1] > 0 ? +m[1] : null; }
   async humanAct(a) { const res = a.type === 'wait' ? { ok: true, message: '等待' } : await this.driver.act(a); this.lastAction = { id: ++this.aseq, clock: '', action: a, result: res.message, ok: res.ok, human: true }; this.actions.push(this.lastAction); if (this.rec) this.rec.steps.push({ ...this.lastAction, frame: this.driver.frameForRecording() }); return res; }
   view() {
     return {
@@ -311,6 +361,7 @@ class DesktopSession extends EventEmitter {
       goal: this.goal && { id: this.goal.id, title: this.goal.title, why: this.goal.why, kind: this.goal.kind, plan: this.goal.plan, steps: this.goal.steps, started: this.goal.started },
       thoughts: this.thoughts.slice(-24), actions: this.actions.slice(-40).map(({ frame, ...a }) => a), last: this.lastAction, recordings: this.listRecordings(), reliability: this.reliability(),
       orders: this.os.orders.slice(-6), llm: llmEnabled() && process.env.ALOS_CUA_RULES !== '1' ? llmConfig().model : null,
+      intercepts: (this.intercepts || []).slice(-8), payHold: !!this.payHold, payCleared: !!this.payCleared,
     };
   }
   serialize() { return { os: this.os.serialize(), mem: this.mem, goal: this.goal, rel: this.rel }; }

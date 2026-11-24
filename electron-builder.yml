@@ -6,6 +6,9 @@ directories:
   buildResources: build
 files:
   - package.json
+  - LICENSE
+  - THIRD_PARTY_NOTICES.md
+  - third-party-licenses/**
   - electron/**
   - core/**
   - dist/**

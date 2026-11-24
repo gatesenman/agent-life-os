@@ -5,6 +5,8 @@ import { Card, Meter, money } from '../components/ui.jsx';
 import { MultiLine } from '../components/charts.jsx';
 import { AnimatedNumber, spring } from '../components/motion.jsx';
 
+import { alignPopulation, eventKey } from '../lib/comparison.mjs';
+
 const ICON = { thought: Lightbulb, action: MousePointerClick, result: CornerDownRight, money: CircleDollarSign, payment: Receipt, human: Eye, system: Cog, error: AlertTriangle };
 const G = { openness: '开放', conscientiousness: '尽责', extraversion: '外向', agreeableness: '宜人', neuroticism: '敏感', risk_tolerance: '冒险', frugality: '节俭', curiosity: '好奇' };
 
@@ -30,7 +32,7 @@ function Delta({ a, b, fmt = (v) => v.toFixed(2), better = 'up' }) {
 export default function Compare({ mv }) {
   const [A, setA] = useState(mv.activeId);
   const [B, setB] = useState(mv.worlds.find((w) => w.worldId !== mv.activeId)?.worldId);
-  useEffect(() => { if (!mv.worlds.some((w) => w.worldId === B)) setB(mv.worlds.find((w) => w.worldId !== A)?.worldId); }, [mv.worlds.length]);
+  useEffect(() => { const aId = mv.worlds.some((w) => w.worldId === A) ? A : mv.activeId; if (aId !== A) setA(aId); if (B === aId || !mv.worlds.some((w) => w.worldId === B)) setB(mv.worlds.find((w) => w.worldId !== aId)?.worldId); }, [A, B, mv.activeId, mv.worlds.map((w) => w.worldId).join(',')]);
   const a = mv.worlds.find((w) => w.worldId === A), b = mv.worlds.find((w) => w.worldId === B);
   if (!a || !b) return <div className="empty-card"><Columns2 size={20} /><b>至少需要两个世界才能对比</b><span>先在「分支图」里分叉一个平行世界。</span></div>;
   const rows = [
@@ -38,7 +40,8 @@ export default function Compare({ mv }) {
     ['行动步数', (w) => w.steps, (v) => v.toFixed(0), 'up'], ['返工次数', (w) => w.stats.rejectedTasks, (v) => v.toFixed(0), 'down'],
   ];
   // 时间线差异：同序号同文本视为共同历史
-  const keyOf = (e) => `${e.seq}|${e.text}`;
+  const keyOf = eventKey;
+  const aligned = alignPopulation(a.life?.series, b.life?.series);
   const setA_ = new Set(a.recent.map(keyOf)), setB_ = new Set(b.recent.map(keyOf));
   const genomeDiff = Object.keys(a.genome).filter((k) => Math.abs(a.genome[k] - b.genome[k]) > 0.001);
   const Col = ({ w, other }) => (
@@ -57,6 +60,7 @@ export default function Compare({ mv }) {
         <GitCompareArrows size={18} className="muted" />
         <div><label className="field-l">世界 B</label><Picker mv={mv} value={B} onChange={setB} exclude={A} /></div>
       </div>
+      <div className="notice"><GitCompareArrows size={14} /><span>当前状态差值不是因果结论。两侧时钟或规则不同，不能直接解释为某项干预的效果。人口图仅对齐共同纪元年；余额图按流水笔次排列。</span></div>
       <div className="cmp-grid">
         {[a, b].map((w, i) => (
           <motion.div key={w.worldId + i} layoutId={`world-${w.worldId}`} className="card cmp-card" transition={spring}>
@@ -69,7 +73,7 @@ export default function Compare({ mv }) {
                 {rows.map(([label, f, fmt, better]) => (
                   <React.Fragment key={label}><dt>{label}</dt><dd className="num">{fmt(f(w))} {i === 1 && <Delta a={f(a)} b={f(b)} fmt={fmt} better={better} />}</dd></React.Fragment>
                 ))}
-                <dt>预算</dt><dd className="num">{money(w.policy.dailyCapUsd)}/天 · 自动批准 {w.policy.autoApproveBelowUsd ? `< ${money(w.policy.autoApproveBelowUsd)}` : '关闭'}</dd>
+                <dt>预算</dt><dd className="num">{money(w.policy.dailyCapUsd)}/天 · 每笔人工审批</dd>
               </dl>
             </div>
           </motion.div>
@@ -89,7 +93,7 @@ export default function Compare({ mv }) {
               ].map(([k, f]) => { const va = f(a), vb = f(b); return <tr key={k} className={String(va) !== String(vb) ? 'diffrow' : ''}><td className="muted">{k}</td><td className="num">{va}</td><td className="num">{vb}</td></tr>; })}</tbody></table>
           </Card>
           <Card title="人口走势对比" icon={LineChart} className="grow">
-            <MultiLine series={[{ name: a.name, color: a.color, values: a.life.series.pop }, { name: b.name, color: b.color, values: b.life.series.pop }]} height={220} format={(v) => v.toFixed(0)} xLabels={['较早', '现在']} />
+            {aligned ? <MultiLine series={[{ name: a.name, color: a.color, values: aligned.a }, { name: b.name, color: b.color, values: aligned.b }]} height={220} format={(v) => v.toFixed(0)} xLabels={[`纪元 ${aligned.start} 年`, `纪元 ${aligned.end} 年`]} /> : <div className="chart-empty">共同纪元年数据不足，暂不绘制误导性对比。</div>}
           </Card>
         </div>
       )}

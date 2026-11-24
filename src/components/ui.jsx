@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { nextOptionIndex } from '../lib/keyboard.mjs';
 import { rise, spring, AnimatedNumber } from './motion.jsx';
 
 export function Card({ title, icon: Icon, actions, children, className = '', pad = true }) {
@@ -43,9 +44,9 @@ export function Meter({ label, value, max = 100, tone = 'accent' }) {
 
 export function Segmented({ value, onChange, options, id = 'seg' }) {
   return (
-    <div className="seg">
+    <div className="seg" role="group" aria-label="视图切换">
       {options.map(([k, label]) => (
-        <button key={k} className={value === k ? 'on' : ''} onClick={() => onChange(k)}>
+        <button key={k} type="button" aria-pressed={value === k} className={value === k ? 'on' : ''} onKeyDown={(e) => { const next = nextOptionIndex(options.findIndex(([x]) => x === k), e.key, options.length); if (next >= 0) { e.preventDefault(); onChange(options[next][0]); e.currentTarget.parentElement.querySelectorAll('button')[next]?.focus(); } }} onClick={() => onChange(k)}>
           {value === k && <motion.span layoutId={`${id}-pill`} className="seg-pill" transition={spring} />}
           <span className="seg-label">{label}</span>
         </button>

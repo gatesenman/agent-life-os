@@ -160,6 +160,8 @@ export default function Desktop({ s, c, godMode, setGodMode, replayId }) {
       {(note || d.status?.error) && <div className="dk-note"><Info size={14} />{note || `连接错误：${d.status.error}`}</div>}
       {d.active && !d.goal && s.running && !s.paused && <div className="dk-coach"><Radio size={13} />TA 正在根据饥饿、能量与余额选择目标。饥饿到 60% 会去点外卖 —— 也可以开启 God Mode 后点「单步」加速。</div>}
       {d.active && d.goal?.kind === 'eat' && (d.orders || []).some((o) => o.status === 'awaiting') && <div className="dk-coach warn"><ShieldCheck size={13} />订单已提交，右下角审批卡片出现后点「批准」，外卖才会配送；批准前不会扣款。</div>}
+      {d.payHold && <div className="dk-coach warn"><ShieldCheck size={13} />支付拦截已生效：一笔电脑内付款正在等待你批准，批准前不会扣款，也不会向虚拟机发送可能完成付款的操作。</div>}
+      {(d.intercepts || []).length > 0 && d.target?.kind === 'vnc' && <div className="dk-coach"><Info size={13} />已拦截 {d.intercepts.length} 次疑似支付点击。内置沙盒可以完全拦住扣款；真实虚拟机上已经发出的支付无法被彻底阻止，请只用测试卡或演示账户。</div>}
 
       <div className="dk-grid">
         <Card className="dk-screen-card" pad={false} title={replay ? '录像回放' : `${s.persona.name} 的电脑`} icon={replay ? Film : Eye}
@@ -175,6 +177,10 @@ export default function Desktop({ s, c, godMode, setGodMode, replayId }) {
               <MButton className={s.takeover ? 'primary sm' : 'ghost sm'} disabled={!godMode} onClick={() => c('takeover', !s.takeover)} title={godMode ? '' : '开启 God Mode 后才能接管'}>
                 {s.takeover ? <HandMetal size={13} /> : <Hand size={13} />}{s.takeover ? '交还控制' : '接管'}
               </MButton>
+              <MButton className="ghost sm" disabled={!godMode} onClick={() => c('fastForwardHunger', 0.72)} title={godMode ? '推进世界时间，让饥饿随代谢上升到 72%，便于演示点外卖' : '开启 God Mode 后才能快进'}>
+                <Utensils size={13} />快进到饥饿
+              </MButton>
+              <MButton className="ghost sm" disabled={!d.goal} onClick={() => c('cancelGoal')} title="取消目标、作废待审批并暂停；恢复后重新规划"><XCircle size={13} />取消目标</MButton>
               {!godMode && <MButton className="ghost sm" onClick={() => setGodMode?.(true)}><Lock size={13} />开启 God Mode</MButton>}
             </div>
           )}>

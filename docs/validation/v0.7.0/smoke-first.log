@@ -1,0 +1,8 @@
+
+> agent-life-os@0.7.0 smoke
+> node test/electron-smoke.js
+
+SMOKE_FPS mirror 5.0
+[2525826:1124/120530.087038:ERROR:viz_main_impl.cc(181)] Exiting GPU process due to errors during initialization
+[2525888:1124/120530.226159:ERROR:viz_main_impl.cc(181)] Exiting GPU process due to errors during initialization
+✗ 冒烟测试失败

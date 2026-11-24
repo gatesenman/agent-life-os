@@ -1,0 +1,18 @@
+name: 验证代码
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test test/evolution.test.js
+      - run: node test/life.test.js && node test/memory.test.js && node test/social.test.js && node test/no-emoji.test.js
+      - run: npm run build
+      - run: npm run audit:release

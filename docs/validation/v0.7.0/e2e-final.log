@@ -1,0 +1,81 @@
+
+> agent-life-os@0.7.0 e2e
+> vite build && node test/e2e.js
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+vite v5.4.21 building for production...
+transforming...
+✓ 1989 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                0.46 kB │ gzip:   0.35 kB
+dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2       10.25 kB
+dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2        11.23 kB
+dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2         18.75 kB
+dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2            19.00 kB
+dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2     25.96 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2            48.26 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2        85.07 kB
+dist/assets/index-CCHrLgmO.css                                76.62 kB │ gzip:  15.99 kB
+dist/assets/index-hFNbeJu_.js                                  5.96 kB │ gzip:   2.05 kB
+dist/assets/DRACOLoader-D7Q8e1q5.js                            6.29 kB │ gzip:   2.61 kB
+dist/assets/index-vTTVRgcI.js                                  8.93 kB │ gzip:   2.40 kB
+dist/assets/index-DGaufY9L.js                                 19.29 kB │ gzip:   7.56 kB
+dist/assets/MemoryUtils-DdeKsIT5-_Mj_L2nA.js                  65.24 kB │ gzip:  20.05 kB
+dist/assets/index-Dl6M_81m.js                                 92.85 kB │ gzip:  25.72 kB
+dist/assets/index.plugins-DrbEwZLu.js                        186.21 kB │ gzip:  57.32 kB
+dist/assets/index-DZaAW96D.js                              1,178.91 kB │ gzip: 346.05 kB
+✓ built in 3.98s
+PASS  首次启动：出现新手引导  引导弹窗出现，第 1 步标题「你在观察一位虚拟人生活」
+PASS  键盘：弹窗焦点不逃逸  12 次键盘导航均留在弹窗
+PASS  引导第 2 步  标题「先看 TA 怎么用电脑」
+PASS  引导第 3 步  标题「花钱必须经过你批准」
+PASS  引导第 4 步  标题「默认只读；God Mode 才能干预」
+PASS  引导第 5 步  标题「准备好了？去看第一人称」
+PASS  引导完成：去看智能体桌面  进入智能体桌面
+PASS  概览：生活仪表盘  主角 江未央，余额 $28.54，饥饿 78%，1 个世界在运行
+PASS  智能体桌面：沙盒已绑定、直播中  绑定 sandbox，2 秒内推进 6 步，当前目标「点一份外卖」
+PASS  饿了：TA 自己打开外卖并下单，弹出审批  订单「外卖订单 WM0001：酸辣粉」$3.2 等待批准，余额仍为 $28.54
+PASS  批准：扣款 → 配送 → 用餐 → 饥饿下降  扣款 $3.20（账本 外卖订单 WM0001：酸辣粉），订单 WM0001 已用餐，饥饿 83% → 39%
+PASS  拒绝路径：不扣款，TA 记住教训  拒绝「外卖订单 WM0002：牛油果卷」$5.4，无扣款（余额 $25.34 → $25.34，差额来自其他收支 0.00），订单状态 cancelled，教训已写入记忆：是；之后 0 笔新审批
+PASS  拒绝后的行为  拒绝后进入 90 分钟冷静期：当前目标「先忍一忍，去赚点钱」（守护者刚拒绝了外卖，46 分钟内不再请求（饥饿 79%））；已过 47 世界分钟，没有再次请求
+PASS  钱包：收支与审批  账本包含「外卖订单 WM0001：酸辣粉」
+PASS  开启 God Mode  God Mode 已开启
+PASS  取消目标：暂停并重新规划  取消后暂停、无扣款，继续后生成新目标
+PASS  审批过期：旧卡片不能结算  旧审批已失效，无扣款
+PASS  世界法则：缩短寿命上限、提高疫病率  寿命上限 122 → 104.1，疫病率 0.04 → 0.129
+PASS  世界法则：撤销上次应用  规则恢复，世界时间未倒流
+PASS  天启：降下瘟疫  患病 0 → 10；时间线：观察者恢复了这个世界。 | 观察者调整了世界法则：寿命上限 122 → 104.1，疫病率 0.04 → 0.129 | 观察者撤销了上一轮法则调整；仅恢复规则，不倒流时间、不复活死者。 | 观察者发动天启：降下瘟疫
+PASS  分叉平行世界  世界 主世界@169、E2E 节俭分支@165
+PASS  并排对比  对比视图同时显示主世界与 E2E 节俭分支
+PASS  镜像世界：地球  canvas 已渲染
+PASS  镜像世界：街区  面包屑：地球 / 上海 · 陆家嘴（镜像锚点） / 街区
+PASS  镜像世界：点击居民  居民 / 江未央 / 主角 / 人生阶段
+PASS  镜像世界：点击地点  地点 / 住宅 D 栋 / 住宅
+PASS  生命与家族  江未央 / / / 生命与家族
+PASS  文明与环境  三个页签均渲染
+PASS  创世中心：总览  创世中心总览已打开
+PASS  与主角对话  主角已回应，记忆 1 条
+PASS  快进到饥饿  饥饿 100% → 100%，余额 $42.2
+PASS  其余页面巡检  活动、记忆、身份、任务板世界、适配器与设置；可靠性：校验通过 100%、目标完成 84.6%、卡死自救 0、预算熔断 0；可观测性：最近 60 步 P50 1 ms / P95 3 ms，定律检查 1080 次；记忆流：今日计划 4 项、反思 9 次、洞见 9 条
+PASS  重启应用：世界与状态续存  世界 主世界 281→291 步、E2E 节俭分支 276→286 步；主角 江未央；账本 5 条；寿命上限 122.0
+PASS  孵化新智能体  新主角 江予安，世界 1 个，当前页「智能体桌面」
+PASS  长跑 10 分钟  CPU 平均 170%（峰值 559%，100% = 一个核），步数 9 → 2000，内存 1180 → 1059 MB（主进程堆 8 → 29 MB，渲染堆 22 → 22 MB），期间最多 1 笔待审批（守护者离开，未批准、未扣款），违反定律 0
+PASS  再次重启：新智能体续存  主角 江予安，步数 9 → 2008
+PASS  VNC：添加并测试连接  连接成功：本地演示VNC服务器 1280×800 · RFB 3.8 · VNC 密码 · 延迟 289 ms
+PASS  VNC：保存并绑定  已绑定 VNC，画面元素 1；作废旧审批 1 笔（换到「E2E · Xvfb 演示机」，作废待审批的「外卖订单 WM0001：酸辣粉」$3.2（未扣款））
+PASS  VNC：智能体自己操作（视觉模型）  动作 wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→click→request_payment→wait，点击校验通过，审批「VNC 演示订单」$1.5 出现
+PASS  VNC：拒绝演示订单  余额 $47.22 → $47.22
+PASS  VNC：接管并手动点击  人工点击已送达（click，ok=true），已交还
+PASS  解除 VNC，回到沙盒  已回到 sandbox
+
+步骤 42/42 通过；残留退出层 0；控制台错误 0；页面异常 0；崩溃 0；死按钮 0；文案疑点 8；定律违反 0；无 emoji true
+  copy: {"view":"概览","bad":[],"english":["order"]}
+  copy: {"view":"智能体桌面","bad":[],"english":["order"]}
+  copy: {"view":"镜像世界","bad":[],"english":["Chen","Xiang","PizzaExpress","Palace","OpenStreetMap","contributors","ODbL"]}
+  copy: {"view":"文明-文明","bad":[],"english":["Sagan"]}
+  copy: {"view":"文明-环境与生态","bad":[],"english":["Lotka","Volterra"]}
+  copy: {"view":"文明-维度体系","bad":[],"english":["Gompertz","startEra","Lotka","Volterra","PRNG"]}
+  copy: {"view":"身份","bad":[],"english":["FICTIONAL","GOVERNMENT","world","local","WORLD"]}
+  copy: {"view":"适配器与设置","bad":[],"english":["https","stripe","agentmail","twilio","version","seed","fingerprint","genome","openness","conscientiousness","extraversion","agreeableness","neuroticism","frugality","curiosity","origin","mountain","town","family","orphanage"]}
+E2E_GREEN

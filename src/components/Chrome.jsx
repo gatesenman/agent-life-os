@@ -4,7 +4,7 @@ import { spring } from './motion.jsx';
 import { AnimatedNumber } from './motion.jsx';
 import {
   LayoutDashboard, Monitor, Activity, Brain, Wallet, Fingerprint, Settings2, Lock, LockOpen, Play, Pause, StepForward, Dna, ShieldCheck, Check, X, PanelLeftClose, PanelLeftOpen,
-  GitBranch, ChevronDown, Zap, CircleHelp, HeartPulse, Landmark, Globe2, Hourglass, MonitorSmartphone, Utensils, Bike, ShoppingBag, Info,
+  GitBranch, ChevronDown, Zap, CircleHelp, HeartPulse, Landmark, Globe2, Hourglass, MonitorSmartphone, Utensils, Bike, ShoppingBag, Info, Orbit,
 } from 'lucide-react';
 import { Badge, money, MButton } from './ui.jsx';
 
@@ -23,6 +23,7 @@ export const NAV_GROUPS = [
     ['identity', '身份', Fingerprint],
   ] },
   { id: 'world', label: '世界', items: [
+    ['genesis', '创世中心', Orbit],
     ['multiverse', '平行世界', GitBranch],
     ['civ', '文明与环境', Landmark],
     ['world', '任务板世界', Monitor],

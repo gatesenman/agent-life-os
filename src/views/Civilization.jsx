@@ -48,6 +48,7 @@ function Laws({ L, c, godMode }) {
   const [draft, setDraft] = useState(L.config);
   useEffect(() => setDraft(L.config), [JSON.stringify(L.config)]);
   const spec = L.configSpec; const dirty = Object.keys(spec).some((k) => draft[k] !== L.config[k]);
+  const changes = Object.entries(spec).filter(([k]) => draft[k] !== L.config[k]);
   return (
     <div className="laws-grid">
       <Card title="世界法则" icon={Scale}>
@@ -58,7 +59,8 @@ function Laws({ L, c, godMode }) {
           ))}
         </div>
         <p className="hint">法则改变的是规则 R，而不是状态 S：已经发生的历史不会被改写，新法则从下一刻起生效。文明起点（{{ primitive: '原始时代', agrarian: '农业时代', industrial: '工业时代', information: '信息时代' }[L.config.startEra] || L.config.startEra}）只在创世时决定。</p>
-        <div className="btnrow end"><MButton className="ghost" disabled={!godMode || !dirty} onClick={() => setDraft(L.config)}>还原</MButton><MButton className="primary" disabled={!godMode || !dirty} onClick={() => c('lifeConfig', draft)}><Scale size={14} />应用法则</MButton></div>
+        {dirty && <div className="notice config-preview" role="status"><Info size={14} /><div><b>修改预览 · {changes.length} 项</b>{changes.map(([k, sp]) => <p key={k}>{sp.zh}：{Number(L.config[k]).toFixed(3)} → {Number(draft[k]).toFixed(3)}</p>)}<small>下一时刻生效，不预测或保证文明结果。</small></div></div>}
+        <div className="btnrow end"><MButton className="ghost" disabled={!godMode || !L.canUndoConfig || dirty} onClick={() => c('undoConfig', L.configRevision)}>撤销上次应用</MButton><MButton className="ghost" disabled={!godMode || !dirty} onClick={() => setDraft(L.config)}>还原</MButton><MButton className="primary" disabled={!godMode || !dirty} onClick={() => c('lifeConfig', { patch: Object.fromEntries(Object.keys(spec).map((k) => [k, draft[k]])), expectedRevision: L.configRevision })}><Scale size={14} />应用法则</MButton></div>
       </Card>
       <Card title="天启" icon={Zap}>
         <p className="muted small mb">天启是人类输入 h(t)，同样必须遵守全部定律。</p>
@@ -99,7 +101,7 @@ export default function Civilization({ s, c, godMode, civTab: tab = 'civ', setCi
           </div>
           <div className="civ-row">
             <Card title="文化、语言与制度" icon={Landmark} className="grow">
-              <div className="grid2"><Meter label="文化" value={civ.culture * 100} /><Meter label="制度与法律" value={civ.institutions * 100} /><Meter label="合作" value={civ.cooperation * 100} tone="soft" /><Meter label="稳定度" value={civ.stability * 100} tone="soft" /></div>
+              <div className="grid2"><Meter label="文化" value={civ.culture * 100} /><Meter label="制度与法律" value={civ.institutions * 100} /><Meter label="合作" value={civ.cooperation * 100} tone="soft" /><Meter label="稳定度" value={civ.stability * 100} tone="soft" /><Meter label="识字率" value={(civ.literacy || L.social?.literacy || 0) * 100} tone="soft" /><Meter label="信息流通" value={(civ.circulation || L.social?.circulation || 0) * 100} tone="soft" /></div>
               <dl className="kv mt"><dt><Languages size={12} /> 方言数</dt><dd className="num">{civ.dialects.toFixed(1)}（印刷术、互联网使其趋同）</dd></dl>
             </Card>
             <Card title="经济（粮币）" icon={Coins} className="civ-econ">
@@ -110,6 +112,9 @@ export default function Civilization({ s, c, godMode, civTab: tab = 'civ', setCi
               <div className="clans mt">{L.clans.map(([k, v]) => <Badge key={k}>{k}氏 {v}</Badge>)}</div>
             </Card>
           </div>
+          <Card title="街区与文明密度" icon={Layers} actions={<span className="muted small">人口密度 {Number(L.social?.density || civ.density || 0).toFixed(2)} · 社会资本 {Math.round((L.social?.socialCapital || 0) * 100)}%</span>}>
+            {(civ.districts || []).length ? <ul className="dist-list">{(civ.districts || []).map((d) => <li key={d.id}><b>{d.name}</b><span className="muted small">{d.places.length} 处地点 · {d.institutions} 个公共机构</span><em className="num">{d.population} 人在此</em></li>)}</ul> : <div className="chart-empty">地点尚未聚集成街区</div>}
+          </Card>
         </>)}
         {tab === 'env' && (<>
           <div className="stats4">

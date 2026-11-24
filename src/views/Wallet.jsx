@@ -19,7 +19,7 @@ export default function Wallet({ s, mv, c }) {
         <Card title="余额走势" icon={LineChart} className="grow"><AreaChart data={balanceSeries(p.ledger)} height={200} format={(v) => `$${v.toFixed(0)}`} /></Card>
         <Card title="今日预算" icon={ShieldCheck} className="budget">
           <Ring value={pol.spentToday} max={pol.dailyCapUsd} size={132} label={money(pol.spentToday)} sub={`/ ${money(pol.dailyCapUsd)}`} />
-          <dl className="kv mt"><dt>单笔上限</dt><dd className="num">{money(pol.perTxCapUsd)}</dd><dt>自动批准</dt><dd>{pol.autoApproveBelowUsd > 0 ? `< ${money(pol.autoApproveBelowUsd)}` : '关闭（每笔人工）'}</dd></dl>
+          <dl className="kv mt"><dt>单笔上限</dt><dd className="num">{money(pol.perTxCapUsd)}</dd><dt>自动批准</dt><dd>关闭（每笔人工）</dd></dl>
         </Card>
       </div>
       <div className="wl-row">

@@ -1,0 +1,36 @@
+✔ R1: 迁移v1、主档损坏恢复、双损坏保护与重复ID拒绝 (32.580799ms)
+✔ R2: 金额严格有限精确到分、旧阈值不得绕过人工审批 (0.211072ms)
+✔ R3: 审批过期、重复批准与并发预算复核均不得误扣款 (6.544261ms)
+✔ R4: 等待截图期间换绑，旧决策不得操作新电脑；取消清空审批并暂停 (8.533938ms)
+✔ R5: 记忆有界、检索去重、角色对话引用正确且死者拒绝不留假记录 (8.671474ms)
+✔ R6: 每日计划以实际结果闭环，发起审批不等于吃饭，跨日结算 (1.220433ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.723421
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: 计划考虑饥饿
+    at Object.<anonymous> (/workspace/agent-life-os/test/memory.test.js:13:55)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.22.1
