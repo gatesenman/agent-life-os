@@ -159,7 +159,28 @@ async function realVnc() {
   } finally { execSync(`bash ${path.join(__dirname, '..', 'scripts', 'vnc-demo.sh')} stop ${D}`, { stdio: 'ignore' }); }
 }
 
+async function fastForwardAndIntercept() {
+  const e = await engine('ff', { hunger: 0.3 });
+  const t0 = e.world.absMinutes(); const h0 = e.world.hunger; const bal = e.adapters.payment.balance;
+  const r = await e.fastForwardHunger(0.72);
+  assert.ok(e.world.hunger >= 0.71 && e.world.hunger <= 0.74, `饥饿应为约 72%，实际 ${e.world.hunger}`);
+  assert.ok(e.world.absMinutes() > t0, '世界时间应前进');
+  assert.ok(e.world.hunger > h0, '饥饿应随时间上升');
+  assert.strictEqual(e.adapters.payment.balance, bal, '快进不得改钱包');
+  assert.deepStrictEqual(e.violations, [], JSON.stringify(e.violations));
+  ok(`快进到饥饿：${Math.round(h0 * 100)}% → ${Math.round(e.world.hunger * 100)}%，时间 +${r.minutes} 分钟，零违反、无扣款`);
+
+  const ds = e.desktop; ds.driver = { kind: 'vnc' }; ds.target = { name: '测试机' };
+  const d = ds.maybeInterceptPayment({ thought: '点击确认支付 $9.00', action: { type: 'click', x: 10, y: 20 } }, { text: '结算页 确认支付 $9.00' }, { clock: '08:00', absMinutes: 10 });
+  assert.strictEqual(d.action.type, 'request_payment', '疑似支付点击应被改写为审批申请');
+  assert.strictEqual(d.intercept, 'block');
+  assert.ok(d.action.memo && /拦截/.test(d.action.memo));
+  const d2 = ds.maybeInterceptPayment({ thought: '再点一次付款', action: { type: 'click', x: 11, y: 21 } }, { text: '确认支付' }, { clock: '08:01', absMinutes: 11 });
+  assert.strictEqual(d2.action.type, 'wait'); assert.strictEqual(d2.intercept, 'hold');
+  ok('VNC 支付拦截：疑似支付点击改为审批申请，待批期间不再向虚拟机发送点击');
+}
+
 (async () => {
-  await e2eApprove(); await rejectPath(); await denyPath(); await lawsCatchTampering(); await takeoverAndRepro(); await llmSandbox(); await realVnc();
+  await e2eApprove(); await rejectPath(); await denyPath(); await lawsCatchTampering(); await takeoverAndRepro(); await llmSandbox(); await realVnc(); await fastForwardAndIntercept();
   console.log('✓ 智能体桌面测试全部通过'); process.exit(0);
 })().catch((e) => { console.error('✗', e); process.exit(1); });

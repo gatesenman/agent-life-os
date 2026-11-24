@@ -3,6 +3,7 @@
 const { EventEmitter } = require('events');
 const fs = require('fs');
 const path = require('path');
+const { VERSION, writeSave, readSave } = require('./persistence');
 const { AgentEngine } = require('./engine');
 
 const COLORS = ['#8b8dff', '#6fd3a0', '#e7b65c', '#ef8a8a', '#7cc4ff', '#c79bff', '#f0a3d0', '#a3e3d8'];
@@ -30,6 +31,7 @@ class Multiverse extends EventEmitter {
     const eng = new AgentEngine({ ...this.base, seed, worldId: 'w0', name: '主世界', color: COLORS[0], desktop });
     this.attach(eng); await eng.init(); this.activeId = 'w0';
     if (this.autostart) eng.start();
+    if (this.recoveryNotice) eng.log('error', this.recoveryNotice);
     this.emit('change', 'w0');
     return eng;
   }
@@ -37,28 +39,30 @@ class Multiverse extends EventEmitter {
   // ---------- 续存：关掉应用再打开，所有平行世界从上次的状态继续 ----------
   get persistFile() { return this.base.dataDir ? path.join(this.base.dataDir, 'multiverse.json') : null; }
   save() {
-    const f = this.persistFile; if (!f || !this.worlds.size) return false;
-    const data = { version: 1, savedAt: Date.now(), seed: this.active?.dna?.seed, activeId: this.activeId, counter: this.counter, worlds: [...this.worlds.values()].map((w) => w.persistState()) };
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    const tmp = f + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(data)); fs.renameSync(tmp, f);
+    const f = this.persistFile; if (!f || !this.worlds.size || this.recoveryBlocked) return false;
+    const data = { version: VERSION, savedAt: Date.now(), seed: this.active?.dna?.seed, activeId: this.activeId, counter: this.counter, worlds: [...this.worlds.values()].map((w) => w.persistState()) };
+    writeSave(f, data);
     return true;
   }
   async resume({ seed } = {}) {
-    const f = this.persistFile; if (!f || !fs.existsSync(f)) return false;
-    let data; try { data = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return false; }
+    const f = this.persistFile; if (!f) return false;
+    let loaded; try { loaded = readSave(f); } catch (e) { this.recoveryBlocked = true; this.recoveryNotice = e.message; return false; }
+    if (!loaded) return false;
+    const data = loaded.data; this.recoveryNotice = loaded.recovered ? '主存档损坏，已从上一份有效备份恢复。' : null;
     if (!data?.worlds?.length || (seed && data.seed && seed !== data.seed)) return false;
-    for (const w of this.worlds.values()) w.stop();
-    this.worlds.clear(); this.counter = data.counter || 0;
+    const staged = [];
     const { generateDNA } = require('./dna');
     for (const W of data.worlds) {
       const m = W.meta; const desktop = m.worldId === 'w0' && this.desktopFor ? this.desktopFor(generateDNA(W.opts.seed, W.opts.dnaOverrides).fingerprint) : null;
       const eng = new AgentEngine({ ...this.base, seed: W.opts.seed, dnaOverrides: W.opts.dnaOverrides, tickMs: W.opts.tickMs || this.base.tickMs, worldId: m.worldId, name: m.name, parentId: m.parentId, forkStep: m.forkStep,
         branchSeed: m.branchSeed, color: m.color, policyOverrides: W.policyOverrides, lifeOverrides: W.lifeOverrides, restore: W.state, resumed: true, desktop });
       eng.opts.seed = W.opts.seed; eng.meta.createdAt = m.createdAt || eng.meta.createdAt;
-      this.attach(eng); await eng.init();
-      if (W.running !== false && this.autostart) { eng.start(); if (W.paused) eng.pause(); }
+      try { await eng.init(); staged.push({ eng, W }); } catch (e) { for (const x of staged) x.eng.stop(); this.recoveryBlocked = true; this.recoveryNotice = '恢复失败，原存档已保护：' + e.message; return false; }
     }
-    this.activeId = this.worlds.has(data.activeId) ? data.activeId : 'w0';
+    for (const w of this.worlds.values()) w.stop();
+    this.worlds.clear(); this.counter = data.counter;
+    for (const { eng, W } of staged) { this.attach(eng); if (W.running !== false && this.autostart) { eng.start(); if (W.paused) eng.pause(); } }
+    this.activeId = data.activeId;
     this.emit('change', this.activeId);
     return true;
   }

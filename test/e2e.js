@@ -26,7 +26,7 @@ const log = (...a) => console.log(...a);
 // ---------- 显示器 ----------
 let xvfb = null;
 if (process.platform === 'linux' && process.env.E2E_USE_DISPLAY !== '1') { // 默认用独立 Xvfb（可录屏、不干扰桌面）；E2E_USE_DISPLAY=1 则用当前显示器
-  const D = ':93'; xvfb = spawn('Xvfb', [D, '-screen', '0', '1600x1000x24', '-nolisten', 'tcp'], { stdio: 'ignore' });
+  const D = ':' + Array.from({ length: 400 }, (_, i) => 100 + i).find((n) => !fs.existsSync(`/tmp/.X11-unix/X${n}`)); xvfb = spawn('Xvfb', [D, '-screen', '0', '1600x1000x24', '-nolisten', 'tcp'], { stdio: 'ignore' });
   process.env.DISPLAY = D; spawnSync('sleep', ['1.5']);
 }
 
@@ -69,7 +69,7 @@ async function launch(extraEnv = {}, tag = '') {
 async function close() { await app.close(); } // 走真实退出路径：关闭窗口 → window-all-closed → 写盘
 // 录屏：直接抓 Xvfb 画面（Playwright 的 Electron 录像会让 GPU 合成失败，故不用）
 let rec = null;
-function recStart() { if (!xvfb) return; fs.mkdirSync(VIDEO, { recursive: true }); rec = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'x11grab', '-framerate', '5', '-video_size', '1600x960', '-i', process.env.DISPLAY, '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', path.join(VIDEO, 'journey.mp4')], { stdio: ['pipe', 'ignore', 'ignore'] }); }
+function recStart() { if (!xvfb || process.env.E2E_RECORD !== '1') return; fs.mkdirSync(VIDEO, { recursive: true }); rec = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'x11grab', '-framerate', '5', '-video_size', '1600x960', '-i', process.env.DISPLAY, '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', path.join(VIDEO, 'journey.mp4')], { stdio: ['pipe', 'ignore', 'ignore'] }); }
 function recStop() { return new Promise((r) => { if (!rec) return r(); rec.on('exit', r); rec.stdin.write('q'); setTimeout(r, 5000); }); }
 
 // ---------- 主进程读取（只读断言 + 模拟时间流逝） ----------
@@ -93,11 +93,12 @@ async function step(name, expected, fn) {
   try { actual = (await fn()) || '符合预期'; pass = true; } catch (e) { actual = `失败：${e.message.split('\n')[0]}`; console.log(e.message.split('\n').slice(0, 12).join('\n')); try { console.log('  最近时间线：\n   ' + (await M(() => global.__alos.mv.active.timeline.filter((x) => x.kind !== 'result').slice(-10).concat(global.__alos.mv.active.timeline.filter((x) => x.kind === 'payment').slice(-4)).map((x) => `[${x.kind}] ${x.text}`.slice(0, 140)).join('\n   ')))); } catch {} }
   try { file = await shot(name.replace(/[\s/：:（）()·，,]+/g, '-').replace(/-+$/, '')); } catch {}
   results.push({ step: name, expected, actual, pass, screenshot: file, ms: Date.now() - t0 });
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, health, complete: false }, null, 1));
   log(`${pass ? 'PASS' : 'FAIL'}  ${name}  ${actual}`);
   return pass;
 }
 const btn = (text, scope = page) => scope.locator('button', { hasText: text }).filter({ visible: true }).first();
-const nav = async (label) => { await page.locator(`.sidebar button[title="${label}"]`).first().click(); await sleep(500); };
+const nav = async (label) => { try { await page.locator('.sidebar .nav button').filter({ hasText: label }).first().click(); } catch (e) { fs.writeFileSync(path.join(OUT, 'navigation-failure.html'), await page.content()); throw e; } await sleep(500); };
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // ---------- 全局检查：死按钮、文案 ----------
@@ -141,6 +142,10 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
   await step('首次启动：出现新手引导', '全新用户数据目录下打开应用，出现 5 步引导弹窗', async () => {
     await page.waitForSelector('.modal[role=dialog]', { timeout: 20000 });
     const h = await page.locator('.modal h2').first().innerText(); return `引导弹窗出现，第 1 步标题「${h}」`;
+  });
+  await step('键盘：弹窗焦点不逃逸', '连续 Tab 和 Shift+Tab 后焦点始终留在引导弹窗', async () => {
+    for (let i = 0; i < 12; i++) { await page.keyboard.press(i % 3 ? 'Tab' : 'Shift+Tab'); expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]')), '焦点逃出弹窗'); }
+    return '12 次键盘导航均留在弹窗';
   });
   for (let i = 2; i <= 5; i++) {
     await step(`引导第 ${i} 步`, '点「下一步」进入下一步', async () => { await btn('下一步').click(); await sleep(450); return `标题「${await page.locator('.modal h2').last().innerText()}」`; });
@@ -210,14 +215,39 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
   await step('开启 God Mode', '右上角点锁按钮，进入可干预模式', async () => {
     await page.locator('.lockbtn').click(); await sleep(300); expect((await page.locator('.lockbtn').getAttribute('aria-pressed')) === 'true', 'God Mode 未开启'); return 'God Mode 已开启';
   });
+  await step('取消目标：暂停并重新规划', '取消目标不会扣款，并暂停世界；继续后按需求重新规划', async () => {
+    await nav('智能体桌面'); await until((x) => !!x.goal, 10000);
+    const b = (await W()).balance; await btn('取消目标').click(); await sleep(400);
+    const stopped = await W(); expect(stopped.worlds.find((x) => x.id === stopped.id).paused && !stopped.goal, '目标未取消或世界未暂停');
+    expect(stopped.balance === b, '取消发生扣款');
+    await page.locator('.titlebar button[aria-label="继续"]').click(); await until((x) => !!x.goal, 10000);
+    return '取消后暂停、无扣款，继续后生成新目标';
+  });
+  await step('审批过期：旧卡片不能结算', '15分钟审批期限到后点击旧审批，余额保持不变', async () => {
+    await page.locator('.titlebar button[aria-label="暂停"]').click(); await sleep(400);
+    const before = (await W()).balance;
+    const id = await M(async () => { const w = global.__alos.mv.active; await w.requestPayment({ amount: .5, merchant: 'World Shop', memo: '过期审批测试' }); const a = w.approvals.at(-1); a.expiresAt = Date.now() - 1; w.emitState(); return a.id; });
+    await nav('收支与审批'); await sleep(400);
+    const row = page.locator('.aplist li').filter({ hasText: '过期审批测试' }); await row.locator('button', { hasText: '批准' }).click(); await sleep(400);
+    const now = await W(); expect(!now.approvals.some((a) => a.id === id) && now.balance === before, '过期审批发生扣款或未失效');
+    await page.locator('.titlebar button[aria-label="继续"]').click(); return '旧审批已失效，无扣款';
+  });
   await step('世界法则：缩短寿命上限、提高疫病率', '文明与环境 → 世界法则，拖动滑杆并「应用法则」，主进程配置随之改变', async () => {
     await nav('文明与环境'); await btn('世界法则').click(); await sleep(500);
     const c0 = (await W()).config;
     const life = page.locator('label.slider', { hasText: '寿命上限' }).locator('input'); await life.focus(); for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowLeft');
     const dis = page.locator('label.slider', { hasText: '疫病率' }).locator('input'); await dis.focus(); for (let i = 0; i < 30; i++) await page.keyboard.press('ArrowRight');
+    expect(await page.locator('.config-preview').isVisible(), '缺少法则修改预览');
     await btn('应用法则').click(); await sleep(600); const c1 = (await W()).config;
     expect(c1.maxLifespan < c0.maxLifespan && c1.diseaseRate > c0.diseaseRate, `配置未改变 ${JSON.stringify(c1)}`); await auditView('世界法则');
     return `寿命上限 ${c0.maxLifespan} → ${c1.maxLifespan.toFixed(1)}，疫病率 ${c0.diseaseRate} → ${c1.diseaseRate.toFixed(3)}`;
+  });
+  await step('世界法则：撤销上次应用', '撤销恢复上一份规则，不倒流世界时间', async () => {
+    const before = await M(() => { const w = global.__alos.mv.active; return { undo: w.configUndo, time: w.world.absMinutes() }; });
+    await btn('撤销上次应用').click(); await sleep(500);
+    const now = await W(); for (const [key, val] of Object.entries(before.undo)) expect(now.config[key] === val, '撤销后法则不一致');
+    expect(await M(() => global.__alos.mv.active.world.absMinutes()) >= before.time, '撤销导致时间倒流');
+    return '规则恢复，世界时间未倒流';
   });
   await step('天启：降下瘟疫', '点「降下瘟疫」，出现瘟疫事件且患病人数增加，定律不被违反', async () => {
     const before = await M(() => { const so = global.__alos.mv.active.society; return Object.values(so.persons).filter((p) => p.alive !== false && !p.dead && p.sick).length; });
@@ -237,7 +267,7 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
   });
   await step('并排对比', '点「并排对比这些世界」，看到两个世界的对比视图', async () => {
     await btn('并排对比这些世界').click(); await sleep(1500); const txt = await page.locator('.main, main').first().innerText();
-    expect(txt.includes('E2E 节俭分支') && txt.includes('主世界'), '对比视图缺少世界'); await auditView('并排对比'); return '对比视图同时显示主世界与 E2E 节俭分支';
+    expect(txt.includes('E2E 节俭分支') && txt.includes('主世界'), '对比视图缺少世界'); expect(txt.includes('当前状态差值不是因果结论'), '缺少可比性提示'); await auditView('并排对比'); return '对比视图同时显示主世界与 E2E 节俭分支';
   });
 
   // ---------------- 镜像世界 ----------------
@@ -264,6 +294,37 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
   });
   await step('文明与环境', '侧栏点「文明与环境」，文明/环境/维度三个页签都能打开', async () => {
     await nav('文明与环境'); for (const tab of ['文明', '环境与生态', '维度体系']) { await page.locator('.main .seg button').filter({ hasText: new RegExp(`^${tab}$`) }).filter({ visible: true }).first().click({ timeout: 8000 }); await sleep(500); await auditView(`文明-${tab}`); } return '三个页签均渲染';
+  });
+  await step('创世中心：总览', '侧栏点「创世中心」，看到创世中心标题以及法则、天启、分叉入口', async () => {
+    await nav('创世中心'); await page.waitForSelector('.view.genesis', { timeout: 8000 }); await sleep(600);
+    const t = await page.locator('.main').innerText();
+    expect(/创世中心/.test(t), '没有创世中心标题');
+    expect(/世界法则/.test(t) && /天启/.test(t), '总览缺少法则或天启入口');
+    await auditView('创世中心');
+    return '创世中心总览已打开';
+  });
+  await step('与主角对话', '在「见闻与对话」里对主角说一句话，出现谈话记录并写入记忆流', async () => {
+    await page.locator('.main .seg button').filter({ hasText: /^见闻与对话$/ }).filter({ visible: true }).first().click();
+    await sleep(500);
+    await page.locator('.talk-compose input').fill('你好，今天过得怎么样？');
+    await btn('传达').click();
+    await page.waitForFunction(() => (document.querySelector('.talk-log')?.innerText || '').includes('观察者'), { timeout: 8000 });
+    const mem = await M(() => global.__alos.mv.active.memory.serialize().long.filter((x) => x.tag === 'talk').map((x) => x.text));
+    expect(mem.some((x) => /你好/.test(x)), '对话未写入记忆流：' + JSON.stringify(mem));
+    await auditView('创世中心-对话');
+    return `主角已回应，记忆 ${mem.length} 条`;
+  });
+  await step('快进到饥饿', 'God Mode 下在天启页点「快进到饥饿 72%」，饥饿随时间上升到约 72%，不扣款、零违反', async () => {
+    if ((await page.locator('.lockbtn').getAttribute('aria-pressed')) !== 'true') await page.locator('.lockbtn').click();
+    await page.locator('.main .seg button').filter({ hasText: /^天启$/ }).filter({ visible: true }).first().click();
+    await sleep(400);
+    const before = await W();
+    await btn('快进到饥饿 72%').click();
+    const s = await until((x) => x.hunger >= 0.71, 20000);
+    expect(s.hunger >= 0.71, `饥饿未上升到 72%，实际 ${s.hunger}`);
+    expect(s.violations === 0, `快进后出现定律违反 ${s.violations}`);
+    await auditView('创世中心-天启');
+    return `饥饿 ${Math.round(before.hunger * 100)}% → ${Math.round(s.hunger * 100)}%，余额 $${s.balance}`;
   });
   await step('其余页面巡检', '活动、记忆、身份、任务板世界、适配器与设置均可打开且无报错', async () => {
     const seen = []; for (const v of ['活动', '记忆', '身份', '任务板世界', '适配器与设置']) { await nav(v); await sleep(500); await auditView(v); seen.push(v); if (v === '活动') { expect(await page.locator('.main').getByText('运行可观测性').count() > 0, '活动页没有可观测性面板'); await shot('活动-运行可观测性'); } if (v === '记忆') { expect(await page.locator('.main').getByText('记忆检索').count() > 0, '记忆页没有检索面板'); await shot('记忆-记忆流'); } }
@@ -297,7 +358,7 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
 
   // ---------------- 长跑健康（约 10 分钟） ----------------
   await step(`长跑 ${SOAK_LABEL}`, '世界持续运行，每 30 秒切换页面并采样内存/CPU，无崩溃、无定律违反、内存不持续增长', async () => {
-    await nav('概览'); const views = ['概览', '智能体桌面', '镜像世界', '活动', '平行世界', '生命与家族', '文明与环境', '收支与审批'];
+    await nav('概览'); const views = ['概览', '智能体桌面', '创世中心', '镜像世界', '活动', '平行世界', '生命与家族', '文明与环境', '收支与审批'];
     const s0 = await sample('soak-start'); const tEnd = Date.now() + SOAK_MS; let i = 0, approvedN = 0;
     while (Date.now() < tEnd) {
       await sleep(Math.min(30000, Math.max(0, tEnd - Date.now()))); await nav(views[i++ % views.length]);
@@ -312,11 +373,11 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
   await close();
 
   // ---------------- 第三段：真实 VNC ----------------
-  const VD = '57', VPORT = 5957, VPASS = 'alos123'; const llm = await mockLLM();
+  const VD = String(600 + process.pid % 2000), VPORT = 20000 + process.pid % 10000, VPASS = 'alos123'; const llm = await mockLLM();
   execSync(`bash ${root}/scripts/vnc-demo.sh stop ${VD}; bash ${root}/scripts/vnc-demo.sh ${VD} ${VPORT} ${VPASS}`, { stdio: 'ignore' });
   await launch({ OPENAI_BASE_URL: llm.url, OPENAI_MODEL: 'mock-vision', OPENAI_API_KEY: '' }, 'run3');
   await step('再次重启：新智能体续存', '重启后仍是刚孵化的新主角', async () => { const s = await W(); expect(s.name === born.name, `${born.name} → ${s.name}`); return `主角 ${s.name}，步数 ${born.steps} → ${s.steps}`; });
-  await step('VNC：添加并测试连接', '智能体桌面点「添加 VNC 电脑」，填写 127.0.0.1:5957 与密码，「测试连接」显示连接成功与首帧预览', async () => {
+  await step('VNC：添加并测试连接', '智能体桌面点「添加 VNC 电脑」，填写独立本地端口与演示密码，「测试连接」显示连接成功与首帧预览', async () => {
     await nav('智能体桌面'); await btn('添加 VNC 电脑').click(); await page.waitForSelector('#dk-add-t');
     const m = page.locator('.dk-modal'); await m.locator('input').nth(0).fill('E2E · Xvfb 演示机'); await m.locator('input').nth(2).fill(String(VPORT)); await m.locator('input[type=password]').fill(VPASS);
     await btn('测试连接', m).click(); await m.locator('.dk-test').waitFor({ timeout: 15000 }); const t = await m.locator('.dk-test').innerText();
@@ -366,10 +427,10 @@ async function sample(tag) { const t = procTree(app.process().pid); let heap = n
   const noEmoji = spawnSync(process.execPath, [path.join(__dirname, 'no-emoji.test.js')], { encoding: 'utf8' });
   health.noEmoji = noEmoji.status === 0; health.totalMs = Date.now() - t0;
   const passed = results.filter((r) => r.pass).length;
-  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, health }, null, 1));
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, health, complete: true }, null, 1));
   log(`\n步骤 ${passed}/${results.length} 通过；残留退出层 ${(health.stuckExits || []).length}；控制台错误 ${health.console.length}；页面异常 ${health.pageErrors.length}；崩溃 ${health.crashes.length}；死按钮 ${health.deadButtons.length}；文案疑点 ${health.copy.length}；定律违反 ${health.finalViolations}；无 emoji ${health.noEmoji}`);
   for (const k of ['console', 'pageErrors', 'mainStderr', 'crashes']) for (const x of health[k].slice(0, 10)) log(`  ${k}: ${x}`);
   for (const d of health.deadButtons) log('  dead:', JSON.stringify(d)); for (const d of health.copy) log('  copy:', JSON.stringify(d));
   const green = passed === results.length && !(health.stuckExits || []).length && !health.pageErrors.length && !health.crashes.length && !health.console.length && health.finalViolations === 0 && health.noEmoji;
   log(green ? 'E2E_GREEN' : 'E2E_RED'); xvfb?.kill(); fs.rmSync(tmp, { recursive: true, force: true }); process.exit(green ? 0 : 1);
-})().catch(async (e) => { console.error('E2E 中断：', e); try { await app?.close(); } catch {} xvfb?.kill(); process.exit(2); });
+})().catch(async (e) => { console.error('E2E 中断：', e); fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, health, complete: false, error: e.message }, null, 1)); try { await app?.close(); } catch {} xvfb?.kill(); process.exit(2); });

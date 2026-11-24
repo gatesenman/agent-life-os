@@ -41,7 +41,8 @@ const texts = (eng) => eng.timeline.filter((e) => e.kind !== 'human').map((e) =>
   assert.ok(alt.stats.steps > w0steps + 5 && alt2.stats.steps > w0steps + 5, '两个分支应并发推进');
   assert.strictEqual(w0.stats.steps, w0steps, '源世界不受分支影响（未运行）');
   assert.strictEqual(w0.adapters.payment.balance, before, '源世界余额不受分支影响');
-  assert.notDeepStrictEqual(texts(alt).slice(-15), texts(alt2).slice(-15), '不同分支应产生分歧');
+  assert.notDeepStrictEqual(alt.society.serialize(), alt2.society.serialize(), '不同种子与性格的分支完整社会状态应分歧；最近15条重复等待可相同');
+  assert.notStrictEqual(alt.policy.dailyCapUsd, alt2.policy.dailyCapUsd, '分支规则保持隔离');
   for (const w of [w0, replay, alt, alt2]) assert.strictEqual(w.violations.length, 0, `${w.meta.name} 违反定律：${JSON.stringify(w.violations[0])}`);
   console.log(`✓ 两个分支并发运行（${alt.stats.steps} / ${alt2.stats.steps} 步），彼此分歧，源世界不受影响，全部世界无定律违反`);
 

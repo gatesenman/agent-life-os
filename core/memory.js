@@ -5,7 +5,7 @@ const path = require('path');
 // v0.5 记忆流架构（参考 Generative Agents / Smallville）：
 //   每条观察带"重要度"（1–10）；检索分 = α·新近度 + β·重要度 + γ·相关度（关键词重叠）；
 //   累计重要度超过阈值时触发"反思"：从高分记忆中归纳洞见，并引用证据（因果可追溯，L3）。
-const IMPORTANCE = { thought: 1, action: 1, result: 2, system: 2, money: 5, payment: 6, human: 7, life: 6, error: 8 };
+const IMPORTANCE = { thought: 1, action: 1, result: 2, system: 2, money: 5, payment: 6, human: 7, life: 6, error: 8, talk: 8, social: 4 };
 const REFLECT_THRESHOLD = 150; // 与 Generative Agents 一致
 function tokens(s) { const t = String(s || '').replace(/[0-9$.,，。、：:（）()「」\s]+/g, ' '); const out = new Set(); for (const w of t.split(' ')) { if (!w) continue; if (/^[\u4e00-\u9fa5]+$/.test(w)) { for (let i = 0; i < w.length - 1; i++) out.add(w.slice(i, i + 2)); } else out.add(w.toLowerCase()); } return out; }
 function overlap(a, b) { if (!a.size || !b.size) return 0; let n = 0; for (const x of a) if (b.has(x)) n++; return n / Math.sqrt(a.size * b.size); }
@@ -20,13 +20,13 @@ class Memory {
       else { try { const m = JSON.parse(fs.readFileSync(this.memPath, 'utf8')); this.long = m.long || []; this.reflections = m.reflections || 0; this.plan = m.plan || null; } catch {} } }
   }
   add(kind, text, extra = {}) { const e = { at: Date.now(), kind, text, importance: importanceOf(kind, text), ...extra }; this.short.push(e); if (this.short.length > 200) this.short.shift(); this.acc += e.importance; return e; }
-  remember(text, tag = 'reflection', clock, year, extra = {}) { const e = { at: Date.now(), tag, text, clock, year, importance: tag === 'lesson' || tag === 'insight' ? 1 : 0.5, ...extra }; this.long.push(e); this.save(); return e; }
+  remember(text, tag = 'reflection', clock, year, extra = {}) { const e = { at: Date.now(), tag, text, clock, year, importance: tag === 'lesson' || tag === 'insight' ? 1 : 0.5, ...extra }; this.long.push(e); if (this.long.length > 500) this.long.splice(0, this.long.length - 500); this.save(); return e; }
   recent(n) { return this.short.slice(-n); }
   // 检索：新近度（按条目距今的序位指数衰减 0.98^k）+ 重要度 + 相关度，三者归一化后等权
   retrieve(query, k = 5) {
     const q = tokens(query); const pool = [...this.short.map((m, i, a) => ({ m, k: a.length - i, imp: m.importance / 10 })), ...this.long.map((m, i, a) => ({ m, k: (a.length - i) * 3, imp: m.importance }))];
-    const scored = pool.map(({ m, k: age, imp }) => { const rec = Math.pow(0.98, age), rel = overlap(q, tokens(m.text)); return { text: m.text, tag: m.tag || m.kind, clock: m.clock, recency: +rec.toFixed(3), importance: +imp.toFixed(3), relevance: +rel.toFixed(3), score: +(rec + imp + rel * 1.5).toFixed(3) }; });
-    const top = scored.sort((a, b) => b.score - a.score).slice(0, k); this.lastRetrieval = top.map((x) => ({ ...x, query: String(query).slice(0, 40) })); return top;
+    const scored = pool.map(({ m, k: age, imp }) => { const rec = Math.pow(0.98, age), rel = overlap(q, tokens(m.text)); return { text: m.text, tag: m.tag || m.kind, clock: m.clock, personId: m.personId, sourceId: m.sourceId, recency: +rec.toFixed(3), importance: +imp.toFixed(3), relevance: +rel.toFixed(3), score: +(rec + imp + rel * 1.5).toFixed(3) }; });
+    const seen = new Set(); const top = scored.sort((a, b) => b.score - a.score).filter((x) => { const key = `${x.personId || ''}:${x.text}`; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, Math.max(0, Math.min(20, Number(k) || 0))); this.lastRetrieval = top.map((x) => ({ ...x, query: String(query).slice(0, 40) })); return top;
   }
   shouldReflect() { return this.acc >= REFLECT_THRESHOLD; }
   // 反思：确定性归纳（无 LLM 也可跑，L6 可复现）。统计最近 60 条高重要度事件，提炼 1–2 条洞见并附证据
@@ -47,18 +47,31 @@ class Memory {
   }
   // 每日计划（Smallville 的"一天粗计划"）：基于余额、饥饿、最近洞见
   makePlan(day, ctx) {
-    const items = [];
-    if (ctx.hunger > 0.4) items.push('先解决吃饭（需守护者批准付款）');
-    items.push(ctx.balance < 20 ? '多接任务，把余额提到 $20 以上' : '接与技能匹配的高价任务');
-    items.push('下午检查邮箱，回复客户');
-    items.push('晚上写日记，复盘今天');
-    const ins = this.long.filter((m) => m.tag === 'insight').slice(-1)[0]; if (ins) items.push('记住：' + ins.text.slice(0, 24));
-    this.plan = { day, items }; this.save(); return this.plan;
+    if (this.plan && this.plan.day !== day) {
+      this.remember(`第 ${this.plan.day} 天计划结算：${(this.plan.tasks || []).filter((t) => t.status === 'done').length}/${(this.plan.tasks || []).length} 项完成。未完成项不伪报成功。`, 'reflection', ctx.clock, ctx.year);
+    }
+    const tasks = [];
+    const add = (id, title) => tasks.push({ id, title, status: 'pending', evidence: null });
+    if (ctx.hunger > 0.4) add('eat', '先解决吃饭（需守护者批准付款）');
+    add('work', ctx.balance < 20 ? '完成交付赚取收入，逐步积累到 $20' : '完成一项技能匹配任务并取得报酬');
+    if ((ctx.energy ?? 100) < 30) add('rest', '休息恢复能量');
+    add('diary', '保存今天的日记');
+    this.plan = { day, items: tasks.map((t) => t.title), tasks, personId: ctx.personId, earned: 0 };
+    this.save(); return this.plan;
+  }
+  updatePlan(outcome = {}, ctx = {}) {
+    if (!this.plan?.tasks || this.plan.personId && this.plan.personId !== ctx.personId) return;
+    const signals = { eat: !!outcome.eat, work: !!outcome.earn, rest: !!outcome.resting, diary: !!outcome.diary };
+    for (const t of this.plan.tasks) if (signals[t.id] && t.status !== 'done') {
+      t.status = 'done'; t.evidence = ctx.sourceId || ctx.clock || '已确认结果'; t.completedAt = ctx.clock;
+    }
+    if (outcome.earn) this.plan.earned = Math.round((this.plan.earned + outcome.earn.amount) * 100) / 100;
+    this.save();
   }
   audit(entry) { if (this.auditPath) fs.appendFileSync(this.auditPath, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n'); }
-  save() { if (this.memPath) fs.writeFileSync(this.memPath, JSON.stringify({ long: this.long.slice(-500), reflections: this.reflections, plan: this.plan }, null, 2)); }
+  save() { if (this.memPath) { const tmp = this.memPath + '.tmp'; fs.writeFileSync(tmp, JSON.stringify({ long: this.long.slice(-500), reflections: this.reflections, plan: this.plan }, null, 2)); fs.renameSync(tmp, this.memPath); } }
   serialize() { return JSON.parse(JSON.stringify({ short: this.short, long: this.long, reflections: this.reflections, plan: this.plan, acc: this.acc })); }
-  restore(st) { this.short = st.short || []; this.long = st.long || []; this.reflections = st.reflections || 0; this.plan = st.plan || null; this.acc = st.acc || 0; this.save(); }
+  restore(st) { this.short = st.short || []; this.long = (st.long || []).slice(-500); this.reflections = st.reflections || 0; this.plan = st.plan || null; this.acc = st.acc || 0; this.save(); }
   // 记忆衰减（艾宾浩斯）：strength = e^(−Δ年 / τ)，τ = 8 × (1 + importance) 年；只衰减不增强（L16）
   summary(year) {
     const long = this.long.slice(-30).map((m) => ({ ...m, strength: year !== undefined && m.year !== undefined ? Math.round(Math.exp(-Math.max(0, year - m.year) / (8 * (1 + (m.importance ?? 0.5)))) * 1000) / 1000 : 1 }));

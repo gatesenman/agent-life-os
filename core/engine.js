@@ -15,6 +15,7 @@ const G = require('./life/genetics');
 const { DesktopSession } = require('./desktop/session');
 
 const SNAPSHOT_EVERY = 5;
+const APPROVAL_TTL_MS = 15 * 60 * 1000;
 
 // 智能体引擎 = 一个世界。实现 S(t+1) = F(S(t), a(t), h(t); R, σ)，见 formula.js
 class AgentEngine extends EventEmitter {
@@ -49,6 +50,7 @@ class AgentEngine extends EventEmitter {
     this.adapters = buildAdapters({ persona: this.persona, dna: this.dna, log: (t) => this.log('system', t) });
     this.identity = {};
     const R = this.restoreState;
+    this.configRevision = R?.configRevision || 0; this.configUndo = R?.configUndo || null;
     for (const [k, a] of Object.entries(this.adapters)) {
       if (R && k === 'payment' && a.restore) { a.restore(R.payment); this.identity[k] = a.card; continue; }
       try { this.identity[k] = await a.provision(); } catch (e) { this.log('system', `${k} 适配器开通失败：${e.message}`); }
@@ -87,6 +89,7 @@ class AgentEngine extends EventEmitter {
     // 内置沙盒可随平行世界分叉；VNC 是一台真实机器，无法分叉——分叉出的世界改用内置沙盒
     const dt = this.desktopTarget || (R?.desktopKind === 'sandbox' ? { id: 'sandbox', kind: 'sandbox', name: '内置沙盒桌面' } : null);
     if (dt) await this.bindDesktop(dt, true);
+    this.expireApprovals();
     this.emitState();
     return this;
   }
@@ -138,8 +141,69 @@ class AgentEngine extends EventEmitter {
     this.persona = { ...this.persona, name: f.name, age: Math.floor(this.society.age(f)), generation: f.gen };
     this.dna = { ...this.dna, genome: Object.fromEntries(Object.keys(this.dna.genome).map((k) => [k, ph[k] ?? this.dna.genome[k]])) };
   }
+  // ---------- 与虚拟人对话（人类输入 h(t)，写入记忆流） ----------
+  talkTo(personId, text) {
+    const msg = String(text || '').trim().slice(0, 400); if (!msg) throw new Error('请输入要对 TA 说的话');
+    const p = this.society.persons[personId]; if (!p) throw new Error('这个人不存在');
+    if (p.died !== null) throw new Error('已故之人不可交谈（L8 必死律）');
+    const before = this.society.probe();
+    const he = this.log('human', `观察者对 ${p.name} 说：「${msg}」`);
+    const rec = this.society.talkTo(personId, msg, { hunger: this.world?.hunger, balance: this.adapters.payment.balance, plan: this.memory?.plan?.items?.join('；'), clock: this.world?.clock?.() });
+    for (const e of this.society.drain()) this.log('life', e.text, { life: e.type, cause: he.id });
+    if (personId === this.society.focusId) {
+      this.memory.add('human', `观察者对我说：「${msg}」`);
+      this.memory.remember(`观察者对我说：「${msg}」。我回答：「${rec.reply}」。`, 'talk', this.world?.clock?.(), this.society?.year, { personId, sourceId: he.id, replySource: 'rules' });
+    }
+    const prev = { time: this.world.absMinutes?.(), society: before, hunger: this.world.hunger };
+    this.checkLife(before);
+    const v = require('./formula').checkInvariants(this, prev);
+    for (const x of v) { this.violations.push({ step: this.stats.steps, ...x }); this.log('error', `违反定律 ${x.law}（${x.name}）：${x.msg}`); }
+    this.emitState();
+    return rec;
+  }
+  // 快进到饥饿：只推进世界时间（L17：饥饿只随时间上升），不代替智能体下单，也不改写余额
+  async fastForwardHunger(target = 0.72) {
+    if (this.busy) throw new Error('世界正在结算上一步，请稍后再试');
+    const t = Math.max(this.world.hunger || 0, Math.min(1, Number(target) || 0.72));
+    const need = Math.max(0, t - (this.world.hunger || 0));
+    const mins = Math.ceil(need / 0.05 * 60);
+    const he = this.log('human', mins === 0
+      ? `观察者请求快进到饥饿 ${Math.round(t * 100)}%，当前已是 ${Math.round((this.world.hunger || 0) * 100)}%。`
+      : `观察者快进世界时间 ${mins} 分钟，使饥饿随代谢上升到约 ${Math.round(t * 100)}%（遵循 L17：饥饿只随时间上升，不会凭空增加或减少）。`);
+    if (mins <= 0) { this.emitState(); return { hunger: this.world.hunger, minutes: 0, already: true }; }
+    this.busy = true; this.ateThisStep = null; this.lastDesktopAction = null;
+    const prev = { time: this.world.absMinutes?.(), society: this.society.probe(), hunger: this.world.hunger };
+    try {
+      this.world.advance(mins);
+      const evs = this.society.advance(mins / 1440 * this.society.config.yearsPerDay, { hour: (this.world?.minute ?? 720) / 60, day: this.world?.day || 1 });
+      for (const e of evs) this.log('life', e.text, { life: e.type, cause: he.id });
+      this.applyFocus();
+      const f = this.society.focus();
+      if (f && f.needs && this.world.hunger !== undefined) f.needs.phys = Math.round(Math.min(f.needs.phys, 1 - this.world.hunger) * 1e4) / 1e4;
+      this.stats.steps++;
+      const v = require('./formula').checkInvariants(this, prev);
+      for (const x of v) { this.violations.push({ step: this.stats.steps, ...x }); this.log('error', `违反定律 ${x.law}（${x.name}）：${x.msg}`); }
+      return { hunger: this.world.hunger, minutes: mins, violations: v.length };
+    } finally { this.busy = false; this.cause = undefined; this.emitState(); }
+  }
   // ---------- 生命层：人类天启（God Mode） ----------
-  lifeConfig(patch) { const c = this.society.setConfig(patch || {}); this.log('human', `观察者调整了世界法则：${Object.entries(c).map(([k, v]) => `${k}=${v}`).join('，') || '无变化'}`); this.emitState(); return c; }
+  lifeConfig(input) {
+    const patch = input?.patch || input || {};
+    if (input?.expectedRevision != null && input.expectedRevision !== (this.configRevision || 0)) throw new Error('法则已被更改，请刷新预览后再应用');
+    const changes = require('./configuration').previewConfig(this.society.config, patch);
+    if (!changes.length) return {};
+    this.configUndo = Object.fromEntries(changes.map((x) => [x.key, x.before]));
+    const c = this.society.setConfig(Object.fromEntries(changes.map((x) => [x.key, x.after])));
+    this.configRevision = (this.configRevision || 0) + 1;
+    this.log('human', `观察者调整了世界法则：${changes.map((x) => `${x.title} ${x.before} → ${x.after}`).join('，')}`);
+    this.emitState(); return c;
+  }
+  undoConfig(expectedRevision) {
+    if (expectedRevision !== (this.configRevision || 0)) throw new Error('法则版本已变，请刷新后重试');
+    if (!this.configUndo) throw new Error('没有可撤销的法则修改');
+    this.society.setConfig(this.configUndo); this.configUndo = null; this.configRevision++;
+    this.log('human', '观察者撤销了上一轮法则调整；仅恢复规则，不倒流时间、不复活死者。'); this.emitState();
+  }
   godEvent(type) {
     const he = this.log('human', `观察者发动天启：${{ plague: '降下瘟疫', disaster: '降下天灾', bounty: '风调雨顺', insight: '赐予灵感', peace: '调停冲突' }[type] || type}`);
     const prev = this.society.probe();
@@ -156,6 +220,7 @@ class AgentEngine extends EventEmitter {
   // ---------- 快照与分叉 ----------
   exportState() {
     return JSON.parse(JSON.stringify({
+      configRevision: this.configRevision, configUndo: this.configUndo,
       world: this.world.serialize ? this.world.serialize() : null, payment: this.adapters.payment.serialize(), memory: this.memory.serialize(),
       timeline: this.timeline.slice(-200), seq: this.seq, stats: this.stats, policy: this.policy.serialize(), fromName: this.meta.name, society: this.society.serialize(),
       desktop: this.desktop?.serialize(), desktopKind: this.desktop?.target ? 'sandbox' : null,
@@ -186,10 +251,11 @@ class AgentEngine extends EventEmitter {
 
   // ---------- 人类输入 h(t) ----------
   start() { if (this.running) return; this.running = true; this.paused = false; this.log('human', '观察者启动了世界时钟。'); this.loop(); this.emitState(); }
-  stop() { this.running = false; clearTimeout(this.timer); this.world?.stop?.(); }
-  pause() { this.paused = true; this.log('human', '观察者暂停了这个世界。'); this.emitState(); }
+  stop() { this.desktop?.invalidateExecution(); this.desktop?.unbind(); this.running = false; clearTimeout(this.timer); this.world?.stop?.(); }
+  pause() { this.desktop?.invalidateExecution(); this.paused = true; this.log('human', '观察者暂停了这个世界。'); this.emitState(); }
   resume() { this.paused = false; this.log('human', '观察者恢复了这个世界。'); this.emitState(); if (this.running) this.loop(); }
-  setTakeover(on) { this.takeover = !!on; this.log('human', on ? '观察者接管了世界（智能体暂停，人工操作）。' : '观察者交还了控制权。'); this.emitState(); }
+  cancelGoal() { this.desktop?.invalidateExecution(); this.cancelDesktopApprovals('取消当前目标'); this.desktop?.finishGoal('failed', '观察者取消；下次启动将根据当前需求重新规划'); this.pause(); }
+  setTakeover(on) { if (on) this.desktop?.invalidateExecution(); this.takeover = !!on; this.log('human', on ? '观察者接管了世界（智能体暂停，人工操作）。' : '观察者交还了控制权。'); this.emitState(); }
   inject(text) { this.instruction = String(text).slice(0, 500); this.log('human', `观察者下达指令：${this.instruction}`); this.emitState(); }
   setSpeed(ms) { this.opts.tickMs = Math.max(100, Number(ms) || 1500); this.emitState(); }
 
@@ -208,6 +274,7 @@ class AgentEngine extends EventEmitter {
     this.ateThisStep = null; this.lastDesktopAction = null;
     try {
       if (!this.society.focusId) { if (!this.ended) { this.ended = true; this.log('system', '血脉断绝：这个世界不再有主角，智能体循环停止。你仍可回看历史、对比平行世界。'); this.running = false; } return; }
+      this.expireApprovals();
       this.policy.rollDay(this.world.day);
       let r;
       if (this.desktop?.active) r = await this.desktopStep();
@@ -219,9 +286,10 @@ class AgentEngine extends EventEmitter {
         this.lastSource = d.source; this.log('thought', d.thought, { source: d.source });
         r = await this.execute(d.action, 'agent');
       }
+      if (r?.cancelled) return;
       // 生命层随世界时间推进：Δ年 = Δ分钟 / 1440 × 时间压缩
       const dMin = (this.world.absMinutes?.() ?? prev.time) - prev.time;
-      const evs = this.society.advance(Math.max(0, dMin) / 1440 * this.society.config.yearsPerDay, { focusWorked: !!(r && r.earn) });
+      const evs = this.society.advance(Math.max(0, dMin) / 1440 * this.society.config.yearsPerDay, { focusWorked: !!(r && r.earn), hour: (this.world?.minute ?? 720) / 60, day: this.world?.day || 1 });
       for (const e of evs) this.log('life', e.text, { life: e.type, cause: e.causeId || this.cause });
       this.applyFocus();
       const f = this.society.focus();
@@ -231,7 +299,7 @@ class AgentEngine extends EventEmitter {
       if (f && this.world.energy !== undefined) { const cap = 30 + 70 * f.health; if (this.world.energy > cap) this.world.energy = Math.round(cap * 10) / 10; }
       this.stats.steps++;
       if (this.stats.steps % SNAPSHOT_EVERY === 0) this.takeSnapshot();
-      this.cognition();
+      this.cognition(r);
       const v = checkInvariants(this, prev);
       for (const x of v) { this.violations.push({ step: this.stats.steps, ...x }); this.log('error', `违反定律 ${x.law}（${x.name}）：${x.msg}`); }
       // v0.5 可观测性：每一步一条轨迹（耗时、决策来源、校验、事件数、定律检查）
@@ -243,9 +311,10 @@ class AgentEngine extends EventEmitter {
   }
 
   // v0.5 认知层（记忆流 → 检索 → 反思 → 计划），只写心智，不改变钱/时间/人口（不影响 L1–L18）
-  cognition() {
+  cognition(outcome = {}) {
     const m = this.memory; const day = this.world.day || 1;
-    if (!m.plan || m.plan.day !== day) { const p = m.makePlan(day, { hunger: this.world.hunger ?? 0, balance: this.adapters.payment.balance }); this.log('thought', `第 ${day} 天的计划：${p.items.join('；')}`, { source: 'plan' }); }
+    if (!m.plan || m.plan.day !== day || m.plan.personId && m.plan.personId !== this.society.focusId) { const p = m.makePlan(day, { hunger: this.world.hunger ?? 0, balance: this.adapters.payment.balance, energy: this.world.energy, personId: this.society.focusId, clock: this.world.clock(), year: this.society.year }); this.log('thought', `第 ${day} 天的计划：${p.items.join('；')}`, { source: 'plan' }); }
+    m.updatePlan({ ...outcome, eat: outcome.eat || this.ateThisStep }, { personId: this.society.focusId, clock: this.world.clock(), sourceId: this.cause });
     if (m.shouldReflect()) { const ins = m.reflect(this.world.clock(), this.society?.year); this.log('thought', `反思（第 ${m.reflections} 次）：${ins.map((x) => x.text).join(' ')}`, { source: 'reflection' }); }
     if (this.stats.steps % 5 === 0) m.retrieve(this.desktop?.goal?.title || this.timeline.filter((e) => e.kind === 'thought').slice(-1)[0]?.text || '今天', 5);
   }
@@ -256,6 +325,7 @@ class AgentEngine extends EventEmitter {
     const ctx = { persona: this.persona, dna: this.dna, wallet, policy: this.policy.summary(), hunger: this.world.hunger, energy: this.world.energy, clock: this.world.clock(), absMinutes: this.world.absMinutes(), step: this.stats.steps, instruction: this.instruction, approvalNote: this.desktop.approvalNote, memories: llmEnabled() ? this.memory.retrieve(this.desktop.goal?.title || '下一步做什么', 4) : [], plan: this.memory.plan };
     this.instruction = null; this.desktop.approvalNote = null;
     const out = await this.desktop.tick(ctx);
+    if (out.held) return { ok: true, cancelled: true };
     this.lastDesktopAction = out.action;
     this.lastSource = out.source; this.log('thought', out.thought, { source: out.source, desktop: true });
     const ae = this.log('action', describe(out.action), { action: out.action, desktop: true, verify: out.verify }); this.cause = ae.id;
@@ -296,18 +366,35 @@ class AgentEngine extends EventEmitter {
     const wallet = this.adapters.payment.summary();
     const v = this.policy.check(req, wallet);
     if (v.verdict === 'deny') { this.log('payment', `支出被策略拒绝：${req.memo} $${req.amount}（${v.reason}）`, { cause: req.cause }); if (req.desktop) this.desktop.onPayment(req.desktop, 'denied', { reason: v.reason }); return; }
-    if (v.verdict === 'auto') return this.settle(req, '策略自动批准');
-    const ap = { id: `${this.meta.worldId}:ap${this.seq + 1}`, worldId: this.meta.worldId, worldName: this.meta.name, at: Date.now(), ...req, reason: v.reason };
+    // 支出永不自动批准。
+    if (req.desktop && this.approvals.some((a) => a.desktop?.kind === req.desktop.kind && a.desktop?.id === req.desktop.id)) return;
+    const ap = { amount: req.amount, merchant: req.merchant, memo: req.memo, itemId: req.itemId, desktop: req.desktop, cause: req.cause, id: `${this.meta.worldId}:ap${this.seq + 1}`, worldId: this.meta.worldId, worldName: this.meta.name, at: Date.now(), expiresAt: Date.now() + APPROVAL_TTL_MS, desktopSession: this.desktop?.sessionId, reason: v.reason };
     this.approvals.push(ap);
     this.log('payment', `申请支出 $${req.amount} 用于「${req.memo}」，等待人类审批。`, { approvalId: ap.id, cause: req.cause });
     this.emit('approval', ap);
   }
 
+  expireApprovals(now = Date.now()) {
+    for (const ap of this.approvals.slice()) {
+      const staleVnc = ap.desktop?.kind === 'vnc' && ap.desktopSession !== this.desktop?.sessionId;
+      if (staleVnc || now >= (ap.expiresAt || ap.at + APPROVAL_TTL_MS)) {
+        this.approvals = this.approvals.filter((a) => a.id !== ap.id);
+        if (ap.desktop) this.desktop?.onPayment(ap.desktop, 'cancelled', {});
+        this.log('payment', `审批已失效：${ap.memo}（${staleVnc ? '电脑会话已改变' : '超过15分钟有效期'}，未扣款）`);
+      }
+    }
+  }
   async approve(id) {
-    const ap = this.approvals.find((a) => a.id === id); if (!ap) return false;
-    this.approvals = this.approvals.filter((a) => a.id !== id);
-    const he = this.log('human', `观察者批准了支出：${ap.memo} $${ap.amount}`);
-    await this.settle({ ...ap, cause: he.id }, '人工批准'); this.emitState(); return true;
+    // 串行结算：两笔同时批准时，后一笔必须看到前一笔更新后的预算与余额。
+    const task = async () => {
+      this.expireApprovals();
+      const ap = this.approvals.find((a) => a.id === id); if (!ap) return false;
+      this.approvals = this.approvals.filter((a) => a.id !== id);
+      const he = this.log('human', `观察者批准了支出：${ap.memo} $${ap.amount}`);
+      const ok = await this.settle({ ...ap, cause: he.id }, '人工批准'); this.emitState(); return ok;
+    };
+    const job = (this.settling || Promise.resolve()).then(task, task);
+    this.settling = job.catch(() => {}); return job;
   }
   reject(id, why = '') {
     const ap = this.approvals.find((a) => a.id === id); if (!ap) return false;
@@ -318,6 +405,9 @@ class AgentEngine extends EventEmitter {
     this.emitState(); return true;
   }
   async settle(req, how) {
+    this.policy.rollDay(this.world.day);
+    const v = this.policy.check(req, this.adapters.payment.summary());
+    if (v.verdict === 'deny') { this.log('payment', `审批结算复核未通过：${v.reason}（未扣款）`, { cause: req.cause }); if (req.desktop) this.desktop.onPayment(req.desktop, 'denied', { reason: v.reason }); return false; }
     try {
       const tx = await this.adapters.payment.pay(req);
       Object.assign(tx, { clock: this.world.clock?.(), day: this.world.day, approval: how, cause: req.cause });
@@ -327,7 +417,8 @@ class AgentEngine extends EventEmitter {
       this.log('money', `支出 -$${req.amount}（${req.memo}，${how}，凭证 ${tx.ref}）`, { cause: req.cause });
       if (req.desktop) this.desktop.onPayment(req.desktop, 'paid', { tx: tx.ref });
       if (dv?.eat) this.doEat({ satiety: dv.eat }, req.cause);
-    } catch (e) { this.log('payment', `支付失败：${e.message}`, { cause: req.cause }); }
+      return true;
+    } catch (e) { this.log('payment', `支付失败：${e.message}`, { cause: req.cause }); if (req.desktop) this.desktop.onPayment(req.desktop, 'denied', { reason: e.message }); return false; }
   }
 
   brief() {
@@ -348,7 +439,7 @@ class AgentEngine extends EventEmitter {
       world: this.world?.screen(), worldKind: this.world?.kind,
       running: this.running, paused: this.paused, takeover: this.takeover, tickMs: this.opts.tickMs,
       timeline: this.timeline.slice(-200), memory: this.memory?.summary(this.society?.year), policy: this.policy?.summary(),
-      life: this.society?.summary({ hour: this.world?.minute !== undefined ? this.world.minute / 60 : 12, day: this.world?.day || 1 }),
+      life: this.society ? { ...this.society.summary({ hour: this.world?.minute !== undefined ? this.world.minute / 60 : 12, day: this.world?.day || 1 }), configRevision: this.configRevision || 0, canUndoConfig: !!this.configUndo } : null,
       approvals: this.approvals, stats: this.stats, violations: this.violations.slice(-20), trace: this.traceSummary(), desktop: this.desktop?.view(), hunger: this.world?.hunger,
       snapshots: this.snapshots.map((s) => ({ step: s.step, clock: s.clock, balance: s.balance })),
       llm: { enabled: llmEnabled(), model: llmConfig().model, baseUrl: llmConfig().baseUrl },
@@ -364,7 +455,7 @@ class AgentEngine extends EventEmitter {
   lifeBrief() {
     const s = this.society; if (!s) return null;
     const sm = s.summary({ hour: (this.world?.minute ?? 720) / 60, day: this.world?.day || 1 });
-    return { year: sm.year, population: sm.population, maxGen: sm.maxGen, K: sm.civ.K, era: sm.civ.era, techs: sm.civ.unlocked.length, stability: sm.civ.stability, temp: sm.env.anomaly, ended: sm.ended,
+    return { year: sm.year, population: sm.population, maxGen: sm.maxGen, K: sm.civ.K, era: sm.civ.era, techs: sm.civ.unlocked.length, stability: sm.civ.stability, literacy: sm.civ.literacy, density: sm.civ.density, circulation: sm.social?.circulation, talks: sm.social?.talks, temp: sm.env.anomaly, ended: sm.ended,
       focus: sm.focus && { name: sm.focus.name, age: sm.focus.age, stage: sm.focus.stage, gen: sm.focus.gen, health: sm.focus.health, meaning: sm.focus.meaning }, deaths: sm.counters.deaths, births: sm.counters.births, causes: sm.causes, successions: sm.counters.successions, config: sm.config,
       series: { pop: sm.history.map((h) => h.pop), K: sm.history.map((h) => h.K), years: sm.history.map((h) => h.year) }, gini: sm.econ.gini, weather: sm.mirror.weather.kind };
   }

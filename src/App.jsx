@@ -17,11 +17,15 @@ import Life from './views/Life.jsx';
 import Civilization from './views/Civilization.jsx';
 import Mirror from './views/Mirror.jsx';
 import Desktop from './views/Desktop.jsx';
+import Genesis from './views/Genesis.jsx';
+
+import { useDialogAccessibility } from './components/useDialogAccessibility.js';
 
 const api = typeof window !== 'undefined' ? window.alos : null;
-const VIEWS = { overview: Overview, world: World, activity: Activity, memory: Memory, wallet: Wallet, identity: Identity, multiverse: Multiverse, settings: Settings, life: Life, civ: Civilization, mirror: Mirror, desktop: Desktop };
+const VIEWS = { overview: Overview, world: World, activity: Activity, memory: Memory, wallet: Wallet, identity: Identity, multiverse: Multiverse, settings: Settings, life: Life, civ: Civilization, mirror: Mirror, desktop: Desktop, genesis: Genesis };
 
 export default function App() {
+  useDialogAccessibility();
   const [data, setData] = useState(null);
   const [view, setView] = useState('overview');
   const [mvTab, setMvTab] = useState('tree');
@@ -55,6 +59,7 @@ export default function App() {
       if (v === 'mirror-street') { setMirrorMode('street'); setView('mirror'); return; }
       if (v.startsWith('civ-')) { setCivTab(v.slice(4)); setView('civ'); return; }
       if (v === 'civ') setCivTab('civ');
+      if (v === 'genesis' || v.startsWith('genesis-')) { setView('genesis'); return; }
       setView(v);
     };
     if (!api) return;
@@ -72,11 +77,11 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup>
-        <div className="shell">
+        <div className="shell"><a className="skip-link" href="#main-content">跳到主要内容</a>
           <Sidebar s={s} mv={mv} view={view} setView={setView} godMode={godMode} onNewAgent={() => { if (!godMode) needGod(); else setNewOpen(true); }} collapsed={collapsed} setCollapsed={setCollapsed} />
           <div className="main">
             <TitleBar s={s} mv={mv} view={view} godMode={godMode} setGodMode={setGodMode} c={c} onHelp={() => setGuide(true)} onNeedGod={needGod} />
-            <div className="content">
+            <main className="content" id="main-content" tabIndex={-1}>
               {/* 页面切换只做入场动画：AnimatePresence(popLayout) 的退出会被页内 layoutId 元素卡住，
                   透明的旧页面叠在新页面上挡住点击并持续累积（v0.4.2 端到端测试发现），故不再保留退出动画 */}
                 <motion.div key={view} className="view-wrap"
@@ -86,7 +91,7 @@ export default function App() {
                     <V s={s} mv={mv} c={c} godMode={godMode} setView={setView} tab={mvTab} setTab={setMvTab} civTab={civTab} setCivTab={setCivTab} mirrorMode={mirrorMode} setMirrorMode={setMirrorMode} setGodMode={setGodMode} replayId={replayId} />
                   </motion.div>
                 </motion.div>
-            </div>
+            </main>
           </div>
           <ApprovalStack approvals={view === 'wallet' ? [] : mv.approvals} c={c} onOpenAll={() => setView('wallet')} worlds={mv.worlds}
             onOpenDesktop={async (ap) => { if (ap.worldId && ap.worldId !== mv.activeId) await c('switch', ap.worldId); setView('desktop'); }} />

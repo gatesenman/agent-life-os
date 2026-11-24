@@ -1,0 +1,650 @@
+{
+ "results": [
+  {
+   "step": "首次启动：出现新手引导",
+   "expected": "全新用户数据目录下打开应用，出现 5 步引导弹窗",
+   "actual": "引导弹窗出现，第 1 步标题「你在观察一位虚拟人生活」",
+   "pass": true,
+   "screenshot": "01-首次启动-出现新手引导.png",
+   "ms": 1433
+  },
+  {
+   "step": "键盘：弹窗焦点不逃逸",
+   "expected": "连续 Tab 和 Shift+Tab 后焦点始终留在引导弹窗",
+   "actual": "12 次键盘导航均留在弹窗",
+   "pass": true,
+   "screenshot": "02-键盘-弹窗焦点不逃逸.png",
+   "ms": 1550
+  },
+  {
+   "step": "引导第 2 步",
+   "expected": "点「下一步」进入下一步",
+   "actual": "标题「先看 TA 怎么用电脑」",
+   "pass": true,
+   "screenshot": "03-引导第-2-步.png",
+   "ms": 2141
+  },
+  {
+   "step": "引导第 3 步",
+   "expected": "点「下一步」进入下一步",
+   "actual": "标题「花钱必须经过你批准」",
+   "pass": true,
+   "screenshot": "04-引导第-3-步.png",
+   "ms": 2276
+  },
+  {
+   "step": "引导第 4 步",
+   "expected": "点「下一步」进入下一步",
+   "actual": "标题「默认只读；God Mode 才能干预」",
+   "pass": true,
+   "screenshot": "05-引导第-4-步.png",
+   "ms": 2283
+  },
+  {
+   "step": "引导第 5 步",
+   "expected": "点「下一步」进入下一步",
+   "actual": "标题「准备好了？去看第一人称」",
+   "pass": true,
+   "screenshot": "06-引导第-5-步.png",
+   "ms": 2053
+  },
+  {
+   "step": "引导完成：去看智能体桌面",
+   "expected": "最后一步点「去看智能体桌面」，弹窗关闭并进入智能体桌面",
+   "actual": "进入智能体桌面",
+   "pass": true,
+   "screenshot": "07-引导完成-去看智能体桌面.png",
+   "ms": 2081
+  },
+  {
+   "step": "概览：生活仪表盘",
+   "expected": "侧栏点「概览」，看到主角、饥饿/能量/余额与桌面预览",
+   "actual": "主角 江未央，余额 $28.54，饥饿 78%，1 个世界在运行",
+   "pass": true,
+   "screenshot": "08-概览-生活仪表盘.png",
+   "ms": 3814
+  },
+  {
+   "step": "智能体桌面：沙盒已绑定、直播中",
+   "expected": "进入智能体桌面，内置沙盒桌面已绑定，屏幕在实时变化",
+   "actual": "绑定 sandbox，2 秒内推进 6 步，当前目标「点一份外卖」",
+   "pass": true,
+   "screenshot": "09-智能体桌面-沙盒已绑定、直播中.png",
+   "ms": 3935
+  },
+  {
+   "step": "饿了：TA 自己打开外卖并下单，弹出审批",
+   "expected": "饥饿 ≥ 60% 后智能体自己打开速达外卖、下单，右下角出现「来自电脑」的审批卡片，未扣款",
+   "actual": "订单「外卖订单 WM0001：酸辣粉」$3.2 等待批准，余额仍为 $28.54",
+   "pass": true,
+   "screenshot": "10-饿了-TA-自己打开外卖并下单-弹出审批.png",
+   "ms": 1498
+  },
+  {
+   "step": "批准：扣款 → 配送 → 用餐 → 饥饿下降",
+   "expected": "点「批准」后钱包扣款、订单送达、TA 吃饭、饥饿明显下降",
+   "actual": "扣款 $3.20（账本 外卖订单 WM0001：酸辣粉），订单 WM0001 已用餐，饥饿 83% → 39%",
+   "pass": true,
+   "screenshot": "11-批准-扣款-→-配送-→-用餐-→-饥饿下降.png",
+   "ms": 3186
+  },
+  {
+   "step": "拒绝路径：不扣款，TA 记住教训",
+   "expected": "再次饥饿下单后点「拒绝」，钱包余额不变、订单取消，记忆中出现教训",
+   "actual": "拒绝「外卖订单 WM0002：牛油果卷」$5.4，无扣款（余额 $25.34 → $25.34，差额来自其他收支 0.00），订单状态 cancelled，教训已写入记忆：是；之后 0 笔新审批",
+   "pass": true,
+   "screenshot": "12-拒绝路径-不扣款-TA-记住教训.png",
+   "ms": 5011
+  },
+  {
+   "step": "拒绝后的行为",
+   "expected": "拒绝后 TA 进入 90 分钟（世界时间）冷静期，先去赚钱，不立刻再次请求",
+   "actual": "拒绝后进入 90 分钟冷静期：当前目标「先忍一忍，去赚点钱」（守护者刚拒绝了外卖，46 分钟内不再请求（饥饿 79%））；已过 47 世界分钟，没有再次请求",
+   "pass": true,
+   "screenshot": "13-拒绝后的行为.png",
+   "ms": 2658
+  },
+  {
+   "step": "钱包：收支与审批",
+   "expected": "侧栏点「收支与审批」，看到刚才批准的外卖扣款记录",
+   "actual": "账本包含「外卖订单 WM0001：酸辣粉」",
+   "pass": true,
+   "screenshot": "14-钱包-收支与审批.png",
+   "ms": 1635
+  },
+  {
+   "step": "开启 God Mode",
+   "expected": "右上角点锁按钮，进入可干预模式",
+   "actual": "God Mode 已开启",
+   "pass": true,
+   "screenshot": "15-开启-God-Mode.png",
+   "ms": 680
+  },
+  {
+   "step": "取消目标：暂停并重新规划",
+   "expected": "取消目标不会扣款，并暂停世界；继续后按需求重新规划",
+   "actual": "取消后暂停、无扣款，继续后生成新目标",
+   "pass": true,
+   "screenshot": "16-取消目标-暂停并重新规划.png",
+   "ms": 3275
+  },
+  {
+   "step": "审批过期：旧卡片不能结算",
+   "expected": "15分钟审批期限到后点击旧审批，余额保持不变",
+   "actual": "旧审批已失效，无扣款",
+   "pass": true,
+   "screenshot": "17-审批过期-旧卡片不能结算.png",
+   "ms": 2794
+  },
+  {
+   "step": "世界法则：缩短寿命上限、提高疫病率",
+   "expected": "文明与环境 → 世界法则，拖动滑杆并「应用法则」，主进程配置随之改变",
+   "actual": "寿命上限 122 → 104.1，疫病率 0.04 → 0.129",
+   "pass": true,
+   "screenshot": "18-世界法则-缩短寿命上限、提高疫病率.png",
+   "ms": 2582
+  },
+  {
+   "step": "世界法则：撤销上次应用",
+   "expected": "撤销恢复上一份规则，不倒流世界时间",
+   "actual": "规则恢复，世界时间未倒流",
+   "pass": true,
+   "screenshot": "19-世界法则-撤销上次应用.png",
+   "ms": 870
+  },
+  {
+   "step": "天启：降下瘟疫",
+   "expected": "点「降下瘟疫」，出现瘟疫事件且患病人数增加，定律不被违反",
+   "actual": "患病 0 → 10；时间线：观察者恢复了这个世界。 | 观察者调整了世界法则：寿命上限 122 → 104.1，疫病率 0.04 → 0.129 | 观察者撤销了上一轮法则调整；仅恢复规则，不倒流时间、不复活死者。 | 观察者发动天启：降下瘟疫",
+   "pass": true,
+   "screenshot": "20-天启-降下瘟疫.png",
+   "ms": 1229
+  },
+  {
+   "step": "分叉平行世界",
+   "expected": "平行世界页填写分支名并点「分叉平行世界」，出现第二个世界并独立运行",
+   "actual": "世界 主世界@169、E2E 节俭分支@165",
+   "pass": true,
+   "screenshot": "21-分叉平行世界.png",
+   "ms": 4519
+  },
+  {
+   "step": "并排对比",
+   "expected": "点「并排对比这些世界」，看到两个世界的对比视图",
+   "actual": "对比视图同时显示主世界与 E2E 节俭分支",
+   "pass": true,
+   "screenshot": "22-并排对比.png",
+   "ms": 1939
+  },
+  {
+   "step": "镜像世界：地球",
+   "expected": "侧栏点「镜像世界」，3D 地球渲染（canvas）",
+   "actual": "canvas 已渲染",
+   "pass": true,
+   "screenshot": "23-镜像世界-地球.png",
+   "ms": 4641
+  },
+  {
+   "step": "镜像世界：街区",
+   "expected": "点「街区」切换到街区视图",
+   "actual": "面包屑：地球 / 上海 · 陆家嘴（镜像锚点） / 街区",
+   "pass": true,
+   "screenshot": "24-镜像世界-街区.png",
+   "ms": 4663
+  },
+  {
+   "step": "镜像世界：点击居民",
+   "expected": "在「居民动态」列表点主角，右侧出现居民卡片",
+   "actual": "居民 / 江未央 / 主角 / 人生阶段",
+   "pass": true,
+   "screenshot": "25-镜像世界-点击居民.png",
+   "ms": 2670
+  },
+  {
+   "step": "镜像世界：点击地点",
+   "expected": "在 3D 街区里点击建筑，右侧出现地点卡片",
+   "actual": "地点 / 住宅 D 栋 / 住宅",
+   "pass": true,
+   "screenshot": "26-镜像世界-点击地点.png",
+   "ms": 2597
+  },
+  {
+   "step": "生命与家族",
+   "expected": "侧栏点「生命与家族」，看到主角基因、家谱与人口",
+   "actual": "江未央 / / / 生命与家族",
+   "pass": true,
+   "screenshot": "27-生命与家族.png",
+   "ms": 2973
+  },
+  {
+   "step": "文明与环境",
+   "expected": "侧栏点「文明与环境」，文明/环境/维度三个页签都能打开",
+   "actual": "三个页签均渲染",
+   "pass": true,
+   "screenshot": "28-文明与环境.png",
+   "ms": 2811
+  },
+  {
+   "step": "创世中心：总览",
+   "expected": "侧栏点「创世中心」，看到创世中心标题以及法则、天启、分叉入口",
+   "actual": "创世中心总览已打开",
+   "pass": true,
+   "screenshot": "29-创世中心-总览.png",
+   "ms": 1523
+  },
+  {
+   "step": "与主角对话",
+   "expected": "在「见闻与对话」里对主角说一句话，出现谈话记录并写入记忆流",
+   "actual": "主角已回应，记忆 1 条",
+   "pass": true,
+   "screenshot": "30-与主角对话.png",
+   "ms": 1011
+  },
+  {
+   "step": "快进到饥饿",
+   "expected": "God Mode 下在天启页点「快进到饥饿 72%」，饥饿随时间上升到约 72%，不扣款、零违反",
+   "actual": "饥饿 100% → 100%，余额 $42.2",
+   "pass": true,
+   "screenshot": "31-快进到饥饿.png",
+   "ms": 832
+  },
+  {
+   "step": "其余页面巡检",
+   "expected": "活动、记忆、身份、任务板世界、适配器与设置均可打开且无报错",
+   "actual": "活动、记忆、身份、任务板世界、适配器与设置；可靠性：校验通过 100%、目标完成 84.6%、卡死自救 0、预算熔断 0；可观测性：最近 60 步 P50 1 ms / P95 3 ms，定律检查 1080 次；记忆流：今日计划 4 项、反思 9 次、洞见 9 条",
+   "pass": true,
+   "screenshot": "34-其余页面巡检.png",
+   "ms": 7930
+  },
+  {
+   "step": "重启应用：世界与状态续存",
+   "expected": "关闭再打开应用：不再出现引导，两个世界、主角、账本、改过的法则都还在，并从上次的步数继续",
+   "actual": "世界 主世界 281→291 步、E2E 节俭分支 276→286 步；主角 江未央；账本 5 条；寿命上限 122.0",
+   "pass": true,
+   "screenshot": "35-重启应用-世界与状态续存.png",
+   "ms": 2261
+  },
+  {
+   "step": "孵化新智能体",
+   "expected": "God Mode 下点侧栏「孵化新智能体」，输入种子并「创世并孵化」，新主角出现、平行世界被重置",
+   "actual": "新主角 江予安，世界 1 个，当前页「智能体桌面」",
+   "pass": true,
+   "screenshot": "36-孵化新智能体.png",
+   "ms": 4087
+  },
+  {
+   "step": "长跑 10 分钟",
+   "expected": "世界持续运行，每 30 秒切换页面并采样内存/CPU，无崩溃、无定律违反、内存不持续增长",
+   "actual": "CPU 平均 170%（峰值 559%，100% = 一个核），步数 9 → 2000，内存 1180 → 1059 MB（主进程堆 8 → 29 MB，渲染堆 22 → 22 MB），期间最多 1 笔待审批（守护者离开，未批准、未扣款），违反定律 0",
+   "pass": true,
+   "screenshot": "37-长跑-10-分钟.png",
+   "ms": 603664
+  },
+  {
+   "step": "再次重启：新智能体续存",
+   "expected": "重启后仍是刚孵化的新主角",
+   "actual": "主角 江予安，步数 9 → 2008",
+   "pass": true,
+   "screenshot": "38-再次重启-新智能体续存.png",
+   "ms": 877
+  },
+  {
+   "step": "VNC：添加并测试连接",
+   "expected": "智能体桌面点「添加 VNC 电脑」，填写独立本地端口与演示密码，「测试连接」显示连接成功与首帧预览",
+   "actual": "连接成功：本地演示VNC服务器 1280×800 · RFB 3.8 · VNC 密码 · 延迟 289 ms",
+   "pass": true,
+   "screenshot": "39-VNC-添加并测试连接.png",
+   "ms": 3974
+  },
+  {
+   "step": "VNC：保存并绑定",
+   "expected": "「保存目标」后点该目标绑定，屏幕显示 VNC 实时画面；沙盒上未批准的旧订单随换电脑作废",
+   "actual": "已绑定 VNC，画面元素 1；作废旧审批 1 笔（换到「E2E · Xvfb 演示机」，作废待审批的「外卖订单 WM0001：酸辣粉」$3.2（未扣款））",
+   "pass": true,
+   "screenshot": "40-VNC-保存并绑定.png",
+   "ms": 4001
+  },
+  {
+   "step": "VNC：智能体自己操作（视觉模型）",
+   "expected": "模拟视觉模型收到真实截图后坐标点击，屏幕变化校验通过，并对购买发起审批",
+   "actual": "动作 wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→wait→click→request_payment→wait，点击校验通过，审批「VNC 演示订单」$1.5 出现",
+   "pass": true,
+   "screenshot": "41-VNC-智能体自己操作-视觉模型.png",
+   "ms": 351
+  },
+  {
+   "step": "VNC：拒绝演示订单",
+   "expected": "点「拒绝」，VNC 上的购买不扣款",
+   "actual": "余额 $47.22 → $47.22",
+   "pass": true,
+   "screenshot": "42-VNC-拒绝演示订单.png",
+   "ms": 1269
+  },
+  {
+   "step": "VNC：接管并手动点击",
+   "expected": "开启 God Mode、点「接管」，在画面上点击，操作送达 VNC 并写入审计；再「交还控制」",
+   "actual": "人工点击已送达（click，ok=true），已交还",
+   "pass": true,
+   "screenshot": "43-VNC-接管并手动点击.png",
+   "ms": 1968
+  },
+  {
+   "step": "解除 VNC，回到沙盒",
+   "expected": "「解除绑定」后可重新绑定内置沙盒",
+   "actual": "已回到 sandbox",
+   "pass": true,
+   "screenshot": "44-解除-VNC-回到沙盒.png",
+   "ms": 1463
+  }
+ ],
+ "health": {
+  "console": [],
+  "pageErrors": [],
+  "mainStderr": [],
+  "samples": [
+   {
+    "at": 1795493708028,
+    "tag": "soak-start",
+    "rssMB": 1180,
+    "cpuPct": null,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 8
+   },
+   {
+    "at": 1795493738811,
+    "tag": "soak-1",
+    "rssMB": 959,
+    "cpuPct": 180,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 9
+   },
+   {
+    "at": 1795493769606,
+    "tag": "soak-2",
+    "rssMB": 1072,
+    "cpuPct": 183,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 12
+   },
+   {
+    "at": 1795493800424,
+    "tag": "soak-3",
+    "rssMB": 1009,
+    "cpuPct": 117,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 17
+   },
+   {
+    "at": 1795493831382,
+    "tag": "soak-4",
+    "rssMB": 993,
+    "cpuPct": 113,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 18
+   },
+   {
+    "at": 1795493863082,
+    "tag": "soak-5",
+    "rssMB": 1089,
+    "cpuPct": 510,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 12
+   },
+   {
+    "at": 1795493893729,
+    "tag": "soak-6",
+    "rssMB": 1053,
+    "cpuPct": 125,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 16
+   },
+   {
+    "at": 1795493924429,
+    "tag": "soak-7",
+    "rssMB": 938,
+    "cpuPct": 114,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 19
+   },
+   {
+    "at": 1795493955121,
+    "tag": "soak-8",
+    "rssMB": 961,
+    "cpuPct": 128,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 24
+   },
+   {
+    "at": 1795493985766,
+    "tag": "soak-9",
+    "rssMB": 962,
+    "cpuPct": 128,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 16
+   },
+   {
+    "at": 1795494017703,
+    "tag": "soak-10",
+    "rssMB": 902,
+    "cpuPct": 121,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 19
+   },
+   {
+    "at": 1795494048587,
+    "tag": "soak-11",
+    "rssMB": 976,
+    "cpuPct": 179,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 16
+   },
+   {
+    "at": 1795494079309,
+    "tag": "soak-12",
+    "rssMB": 910,
+    "cpuPct": 120,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 19
+   },
+   {
+    "at": 1795494110985,
+    "tag": "soak-13",
+    "rssMB": 934,
+    "cpuPct": 123,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 14
+   },
+   {
+    "at": 1795494142303,
+    "tag": "soak-14",
+    "rssMB": 983,
+    "cpuPct": 559,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 17
+   },
+   {
+    "at": 1795494172994,
+    "tag": "soak-15",
+    "rssMB": 991,
+    "cpuPct": 142,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 19
+   },
+   {
+    "at": 1795494203687,
+    "tag": "soak-16",
+    "rssMB": 964,
+    "cpuPct": 110,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 19
+   },
+   {
+    "at": 1795494234340,
+    "tag": "soak-17",
+    "rssMB": 992,
+    "cpuPct": 128,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 24
+   },
+   {
+    "at": 1795494265005,
+    "tag": "soak-18",
+    "rssMB": 963,
+    "cpuPct": 127,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 17
+   },
+   {
+    "at": 1795494296803,
+    "tag": "soak-19",
+    "rssMB": 959,
+    "cpuPct": 122,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 21
+   },
+   {
+    "at": 1795494308849,
+    "tag": "soak-20",
+    "rssMB": 1072,
+    "cpuPct": 175,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 29
+   },
+   {
+    "at": 1795494308864,
+    "tag": "soak-end",
+    "rssMB": 1059,
+    "cpuPct": 63,
+    "procs": 6,
+    "rendererHeapMB": 22,
+    "mainHeapMB": 29
+   }
+  ],
+  "crashes": [],
+  "copy": [
+   {
+    "view": "概览",
+    "bad": [],
+    "english": [
+     "order"
+    ]
+   },
+   {
+    "view": "智能体桌面",
+    "bad": [],
+    "english": [
+     "order"
+    ]
+   },
+   {
+    "view": "镜像世界",
+    "bad": [],
+    "english": [
+     "Chen",
+     "Xiang",
+     "PizzaExpress",
+     "Palace",
+     "OpenStreetMap",
+     "contributors",
+     "ODbL"
+    ]
+   },
+   {
+    "view": "文明-文明",
+    "bad": [],
+    "english": [
+     "Sagan"
+    ]
+   },
+   {
+    "view": "文明-环境与生态",
+    "bad": [],
+    "english": [
+     "Lotka",
+     "Volterra"
+    ]
+   },
+   {
+    "view": "文明-维度体系",
+    "bad": [],
+    "english": [
+     "Gompertz",
+     "startEra",
+     "Lotka",
+     "Volterra",
+     "PRNG"
+    ]
+   },
+   {
+    "view": "身份",
+    "bad": [],
+    "english": [
+     "FICTIONAL",
+     "GOVERNMENT",
+     "world",
+     "local",
+     "WORLD"
+    ]
+   },
+   {
+    "view": "适配器与设置",
+    "bad": [],
+    "english": [
+     "https",
+     "stripe",
+     "agentmail",
+     "twilio",
+     "version",
+     "seed",
+     "fingerprint",
+     "genome",
+     "openness",
+     "conscientiousness",
+     "extraversion",
+     "agreeableness",
+     "neuroticism",
+     "frugality",
+     "curiosity",
+     "origin",
+     "mountain",
+     "town",
+     "family",
+     "orphanage"
+    ]
+   }
+  ],
+  "deadButtons": [],
+  "soak": {
+   "cpuAvg": 170,
+   "cpuMax": 559,
+   "rssMin": 902,
+   "rssMax": 1180
+  },
+  "finalViolations": 0,
+  "noEmoji": true,
+  "totalMs": 722162
+ },
+ "complete": true,
+ "redaction": "仅公开证据中的临时测试主机名脱敏；结果、时长和测量值未改动。"
+}

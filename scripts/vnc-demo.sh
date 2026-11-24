@@ -12,6 +12,6 @@ BROWSER=$(command -v google-chrome || command -v chromium || command -v chromium
 DISPLAY=:$D "$BROWSER" --no-sandbox --no-first-run --disable-gpu --lang=zh-CN --disable-features=Translate,TranslateUI --disable-translate --user-data-dir=/tmp/alos-vnc-chrome-$D --window-position=0,0 --window-size=1280,800 --app="file://$HERE/vnc-demo/index.html" >/tmp/alos-chrome-$D.log 2>&1 &
 sleep 2
 if [ -n "$PASS" ]; then x11vnc -storepasswd "$PASS" /tmp/alos-vnc-$D.pass >/dev/null 2>&1; AUTH="-rfbauth /tmp/alos-vnc-$D.pass"; else AUTH="-nopw"; fi
-x11vnc -display :$D -rfbport $PORT -forever -shared -quiet $AUTH >/tmp/alos-x11vnc-$D.log 2>&1 &
+x11vnc -display :$D -localhost -rfbport $PORT -forever -shared -quiet $AUTH >/tmp/alos-x11vnc-$D.log 2>&1 &
 sleep 1
 echo "VNC 演示电脑已启动：127.0.0.1:$PORT（显示 :$D）${PASS:+，密码已设置}"

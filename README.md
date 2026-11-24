@@ -1,125 +1,96 @@
-# 虚拟人生（Agent Life OS）
+# 虚拟人生 · Agent Life OS
 
-**0.5.0** · AI 虚拟人观察舱：让虚拟人在桌面系统里生活，拥有世界、钱包、邮箱/通信与第一人称电脑，并可对照平行世界。
+中文桌面软件原型 **v0.7.0**。在世界之外观察虚拟人生活、工作、点外卖、留下记忆；也可以开启「创世中心」调整规则、分叉世界。
 
-## 界面截图
+> 默认完全离线模拟。沙盒里的商店、收入、身份、邮箱与电话号码均为虚构；不是现实赚钱服务，不承诺真实模型任务成功率，也不是法律意义上的自主主体。
 
-![总览](docs/screenshot-overview.png)
+![观察舱](docs/screenshot-overview.png)
 
-*总览 / Overview*
+## 下载与安装
 
-![世界](docs/screenshot-world.png)
+- [0.7.0 Windows x64 安装包与源码](https://github.com/gatesenman/agent-life-os/releases/tag/v0.7.0)
+- Windows 10/11 x64：下载 `AgentLifeOS-Setup-0.7.0-x64.exe`，核对同页 `SHA256SUMS-0.7.0.txt` 后双击，选择安装目录。安装包未签名，Windows 可能显示 SmartScreen；不确定来源时不要运行。
+- 升级前备份应用数据（默认 `%APPDATA%/Agent Life OS/agents/`，以 Electron 实际 userData 路径为准；自定义 `ALOS_DATA_DIR` 时以配置为准）。不要删除自己的存档。
+- 0.7.0 读取 v1 存档并迁移为 v2；写入前保留上一份有效 `.bak`。主档损坏尝试备份；两者都坏时保留原文件，临时世界禁止覆盖。双损坏保护提示记录在时间线中。
+- 这是桌面应用的网上发布，不是托管网页服务。旧版本资料保留于 Git 历史；本次分支经 PR 审查，不直接覆盖主分支。
 
-*世界 / World*
+## 上手路径
 
-![第一人称桌面](docs/screenshot-desktop.png)
+1. 安装打开，完成五步引导，进入「智能体桌面」。默认绑定内置沙盒，不要绑定有个人账号的电脑。
+2. 先观察需求条、行动计划与思考记录。外卖申请出现后，到「收支与审批」批准或拒绝；批准前不扣模拟款。
+3. 点击右上角「只读观察」开启 God Mode。创世中心可「快进到饥饿」，按时间代谢触发演示，不直接修改饥饿值。
+4. 世界法则滑杆修改后先看差异预览，再应用；可撤销上一份规则，但不能撤销已发生的人生事件。
+5. 分叉世界后在平行世界页比较。相同纪元年区间才绘制人口对比；当前状态差值不代表因果结论。
+6. 「取消目标」会作废待审批并暂停，点击「继续」按当前需求重新规划；不是从旧键鼠动作中盲目续跑。
 
-*第一人称桌面 / First-person desktop*
+## v0.7.0 · 十轮真实改进
 
-![钱包](docs/screenshot-wallet.png)
+| 轮次 | 改进 | 验证重点 |
+|---|---|---|
+| 1 | 存档版本迁移、原子替换、有效备份与损坏保护 | v1读取、损坏主档恢复、双坏禁止覆盖 |
+| 2 | 金额必须有限且精确到分；旧自动审批阈值停用 | NaN、Infinity、字符串、负数拒绝；每笔人工 |
+| 3 | 审批15分钟失效、VNC会话隔离、串行结算与预算再验证 | 过期/重复批准不扣款、并发预算不超支 |
+| 4 | 截图/模型等待中的旧决策失效；取消任务并暂停 | 换绑/暂停/接管/停止后的旧键鼠命令不再发送 |
+| 5 | 长期记忆有界、检索去重、对话角色与来源引用 | 不把前任主角话语当成现任；死者不可交谈 |
+| 6 | 每日计划按真实收入、用餐、休息、日记结果闭环 | 申请付款不等于吃过饭，未完成不伪报成功 |
+| 7 | 法则严格验证、差异预览、版本冲突与单步撤销 | 不倒流时间，不复活死者 |
+| 8 | 共同年份人口对齐，真实事件ID匹配共同历史 | 不外推未来，不把独立世界同文案当共同经历 |
+| 9 | 弹窗焦点圈定、方向键切换、分支键盘操作、减少动态效果 | Tab/Shift+Tab、首尾键与焦点可见 |
+| 10 | 源码公开门禁、排除运行数据与大录像、CI基础验证 | 密钥模式/私钥/运行文件拒绝；历史与安装内容复核 |
 
-*钱包 / Wallet*
+详细过程、首测失败与修正见 [十轮迭代报告](docs/reviews/10-十轮自主迭代.md)。本地测试证据在 [docs/validation/v0.7.0](docs/validation/v0.7.0)，完整旅程结果见 [results.json](docs/e2e/results.json)。CI 状态请以 GitHub Checks 为准，本地通过不表示云端已通过。
 
-## 功能特性
+## 已有能力与边界
 
-- 观察舱总览、世界、人生与文明维度。
-- 钱包与身份；可对比不同世界线。
-- 第一人称电脑桌面，含审批、回放与 VNC 等能力（见 `docs/screenshot-desktop-*.png`）。
-- 引导流程与新建智能体。Electron + React + Three.js。
+- DNA、虚构档案卡、程序化 3D 角色、生命与家族、多世代遗传、文明环境与街区。
+- 创世中心、居民事实/传闻流通、规则式角色对话、记忆流、反思与每日计划。
+- L1–L18 世界定律逐步检查。它们是模拟约束，不是对真实世界的物理完整建模证明。
+- 平行世界最多8个，隔离运行、不合并。真实 VNC 设备不能复制，分叉使用独立沙盒。
+- Three.js 地球和陆家嘴 OSM 离线街区。不是全球实时数字孪生，不保证现实建筑或道路的实时准确。
+- 内置电脑的规则策略可以离线完成演示闭环。默认对话是确定性规则回复，不是通用大模型对话。
+- 可选兼容视觉模型驱动 VNC；本轮仅使用本地模拟模型与演示网站，未接真实付费服务。
 
-## 技术栈
+## 开发运行
 
-- Electron
-- React + Vite + TypeScript
-- Three.js / 3d-tiles-renderer
-
-## 从源码运行
-
-源码在仓库根目录。本仓库不包含安装包。
-
-```bash
-npm install
-npm run dev
-npm test
-npm run build
-```
-## 文档
-
-- [概览](docs/screenshot-overview.png)
-- [`设计文档.md`](设计文档.md)
-- [`docs/reviews/04-产品经理深度优化.md`](docs/reviews/04-产品经理深度优化.md)
-- [设计文档](设计文档.md)
-
-
-## 贡献
-
-欢迎通过 Issue 和 Pull Request 参与，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。参与时请遵守 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
-
-## 许可证
-
-`package.json` 声明为 MIT。仓库根目录未附带 LICENSE 文件。
-
----
-
-## English
-
-# Agent Life OS
-
-**0.5.0** · An observation deck for AI virtual persons: they live in a desktop world with a wallet, communications, a first-person computer, and parallel universes you can compare.
-
-## Screenshots
-
-![Overview](docs/screenshot-overview.png)
-
-*总览 / Overview*
-
-![World](docs/screenshot-world.png)
-
-*世界 / World*
-
-![First-person desktop](docs/screenshot-desktop.png)
-
-*第一人称桌面 / First-person desktop*
-
-![Wallet](docs/screenshot-wallet.png)
-
-*钱包 / Wallet*
-
-## Features
-
-- Observation overview, world, life, and civilization dimensions.
-- Wallet and identity, plus comparison across world-lines.
-- A first-person computer desktop, including approval, replay, and VNC views (see `docs/screenshot-desktop-*.png`).
-- Onboarding and new-agent flows. Electron + React + Three.js.
-
-## Tech stack
-
-- Electron
-- React + Vite + TypeScript
-- Three.js / 3d-tiles-renderer
-
-## Getting started
-
-Source is at the repository root. This repository does not include installers.
+建议 Node.js 22、npm 10+；有图形环境的 Linux/Windows/macOS。
 
 ```bash
-npm install
-npm run dev
+npm ci
 npm test
 npm run build
+npm start
 ```
-## Documentation
 
-- [概览](docs/screenshot-overview.png)
-- [`设计文档.md`](设计文档.md)
-- [`docs/reviews/04-产品经理深度优化.md`](docs/reviews/04-产品经理深度优化.md)
-- [设计文档](设计文档.md)
+开发：`npm run dev`。Windows 打包：`npm run dist:win`（Linux 交叉打包还需 Wine）。
 
+```bash
+# 完整 Electron 旅程，默认包含10分钟长跑；Linux还需Xvfb、x11vnc与Chrome/Chromium
+npm run e2e
+# 可选录屏（默认不录，避免大文件）；短跑只用于调试，不替代最终长跑
+E2E_RECORD=1 npm run e2e
+E2E_SOAK_MS=60000 npm run e2e
+npm run audit:release
+```
 
-## Contributing
+`npm test` 含本地 VNC 协议演示，CI workflow 仅执行无真实桌面依赖的确定性测试和构建。没有宣称在 CI 运行完整端到端。
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities privately via [SECURITY.md](SECURITY.md). This project follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+从 `.env.example` 复制自己的 `.env` 仅用于本地开发，切勿提交。安装版可用启动进程环境变量；不会自动写入自己的 API Key。所有外部服务默认 mock；本轮不为任何服务注册、付费或接入个人账号。
 
-## License
+## 安全、风险与未验证项
 
-`package.json` declares MIT. There is no LICENSE file at the repository root.
+1. 每笔模拟付款均需人工审批。有效期按真实时间15分钟计算，恢复旧沙盒订单仍需在期限内批准；换绑或 VNC 会话重建时旧审批失效。
+2. **真实 VNC 付款拦截只是尽力而为。** 文本/模型可能漏判；已经发送到远端的键鼠或商户请求无法撤回。金额无法确认时不猜测，等待人工接管。一次审批只放行一次疑似支付动作，不能保证其对应真实商户金额。只连接隔离演示机，不连接个人支付或个人通信账户，不用于真实消费。
+3. 真实 VNC 上的支付与本地模拟账本不是同一系统。本软件不能证明、执行或对账真实结算；批准不等于商户已成功收款。
+4. Stripe 适配器只允许测试密钥；AgentMail、Twilio、QEMU/VirtualBox/UTM 与真实视觉模型本轮未实测，不作为完成验收的能力承诺。
+5. 账号及法律责任归人类操作者。虚构身份卡不能用于真实身份核验。外部平台操作须遵守平台规则；不要让模拟角色冒充真人或自动对外发言。
+6. Windows GPU流畅度、实体Windows安装/卸载、SmartScreen以及macOS签名未在本轮实机验证。安装包在Linux/Wine构建，不等同于Windows实机验收。
+7. **依赖风险尚未清零**：本轮 `npm audit` 全依赖检查为22项（1严重、16高危、5中危），包含当前Electron运行时与构建工具；仅 `--omit=dev` 为0不能代表安装包安全。完整记录见 `docs/validation/v0.7.0/dependency-audit-all.json`。修复涉及Electron/Vite/打包器跨主版本升级，本次未盲目升级。这是研究原型，不应暴露VNC端口到公网，不是安全隔离虚拟机或生产支付产品。发布扫描为启发式门禁，加上人工清单核对，不是零泄漏的数学保证。
+8. 软件存档、记忆和审计在本机，源码和安装包不包含开发用户数据。不要把 `.env`、`.alos-data*`、`desktop-targets.json`、录屏或你的存档上传到公开Issue。
+
+## 文档与许可
+
+[设计文档](设计文档.md) · [历史评审](docs/reviews/) · [贡献指南](CONTRIBUTING.md) · [安全报告](SECURITY.md)
+
+历史调研只作为设计参考，不作最新竞品排名或法律意见。主世界与人物均为模拟，现实交易请自行核实适用法规。
+
+项目代码按 MIT 使用（见 [LICENSE](LICENSE)）。捆绑地图数据遵循各自来源许可：OpenStreetMap © contributors（ODbL），Natural Earth 公有领域；详见 [第三方许可](THIRD_PARTY_NOTICES.md) 与资源元信息。

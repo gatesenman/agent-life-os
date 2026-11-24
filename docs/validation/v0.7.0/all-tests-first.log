@@ -1,0 +1,21 @@
+
+> agent-life-os@0.7.0 test
+> node test/headless.test.js && node test/llm-mock.test.js && node test/multiverse.test.js && node test/life.test.js && node test/desktop.test.js && node test/no-emoji.test.js && node test/memory.test.js && node test/social.test.js && node --test test/evolution.test.js
+
+✓ DNA/人格确定性： 沈若川 ALOS-FFAD-5C8E 兼收并蓄/张弛有度/内外兼修/有分寸/情绪稳定/舍得花钱/敢于冒险
+✓ 运行 80 步：收入 $9.5，支出 $6，余额 $23.5，审批请求 67 次
+✓ 80 步内未违反任何世界定律（L1–L5）
+✓ QEMU 截图 PPM→PNG 转换
+全部测试通过
+✓ OpenAI 兼容 LLM 决策链路正常
+✓ L6 可复现：两次独立运行 40 步轨迹完全一致
+✓ 从第 10 步快照重放 10 步，与原世界逐条一致
+✗ AssertionError [ERR_ASSERTION]: 不同分支应产生分歧
+    at /workspace/agent-life-os/test/multiverse.test.js:44:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [Array],
+  operator: 'notDeepStrictEqual',
+  diff: 'simple'
+}

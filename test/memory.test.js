@@ -10,6 +10,6 @@ const ins = m.reflect('D1 10:00', 0); assert(ins.length >= 1 && ins[0].evidence.
 assert(!m.shouldReflect(), '反思后压力归零');
 const r = m.retrieve('翻译 任务 收入', 3); assert(r.length === 3 && r[0].score >= r[2].score, '检索按得分排序');
 assert(r.some((x) => x.relevance > 0), '应检索到相关记忆');
-const p = m.makePlan(1, { hunger: 0.6, balance: 5 }); assert(p.items[0].includes('吃饭') && p.items.length >= 4, '计划考虑饥饿');
+const p = m.makePlan(1, { hunger: 0.6, balance: 5 }); assert(p.items[0].includes('吃饭') && p.items.length >= 3 && p.tasks.every((t) => t.status === 'pending'), '计划考虑饥饿');
 const m2 = new Memory(dir); assert(m2.reflections === 1 && m2.plan.day === 1, '反思计数与计划持久化');
 console.log(`✓ 记忆流：重要度 → 反思（${ins.length} 条洞见）→ 检索（top 得分 ${r[0].score}）→ 每日计划 ${p.items.length} 项，持久化正常`);

@@ -1,0 +1,8 @@
+
+> agent-life-os@0.7.0 audit:release
+> node scripts/audit-public.js
+
+{
+  "files": 205,
+  "findings": []
+}

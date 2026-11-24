@@ -1,0 +1,10 @@
+✔ R1: 迁移v1、主档损坏恢复、双损坏保护与重复ID拒绝 (122.293624ms)
+✔ R2: 金额严格有限精确到分、旧阈值不得绕过人工审批 (0.247345ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 686.145798

@@ -1,0 +1,9 @@
+{
+  "archive": "Final NSIS EXE → resources/app.asar",
+  "version": "0.7.0",
+  "files": 77,
+  "extractedFromFinalExe": true,
+  "asarSha256": "7e32c5899fdc419e59a5c90311894a6fb6e49af5a665b0163480671945eec9cf",
+  "licenseIncluded": true,
+  "findings": []
+}

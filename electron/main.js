@@ -138,6 +138,7 @@ ipcMain.handle('alos:control', async (_e, cmd, arg) => {
     switch (cmd) {
       case 'start': w.start(); break;
       case 'pause': w.pause(); break;
+      case 'cancelGoal': w.cancelGoal(); break;
       case 'resume': w.resume(); break;
       case 'step': await w.step(); break;
       case 'speed': w.setSpeed(arg); break;
@@ -154,11 +155,14 @@ ipcMain.handle('alos:control', async (_e, cmd, arg) => {
       case 'resumeAll': mv.resumeAll(); break;
       // 世界维度体系 / 镜像世界（God Mode）
       case 'lifeConfig': w.lifeConfig(arg); break;
+      case 'undoConfig': w.undoConfig(arg); break;
       case 'godEvent': w.godEvent(arg); break;
       case 'editPlace': w.editPlace(arg); break;
+      case 'talk': w.talkTo(arg.personId || arg.id, arg.text || arg.message); break;
+      case 'fastForwardHunger': await w.fastForwardHunger(arg?.target ?? arg); break;
     }
   } catch (e) { return { error: e.message, ...payload() }; }
-  if (['fork', 'remove', 'switch', 'approve', 'reject', 'lifeConfig', 'godEvent', 'editPlace', 'pauseAll', 'resumeAll'].includes(cmd)) persist();
+  if (['undoConfig', 'cancelGoal', 'fork', 'remove', 'switch', 'approve', 'reject', 'lifeConfig', 'godEvent', 'editPlace', 'pauseAll', 'resumeAll', 'talk', 'fastForwardHunger'].includes(cmd)) persist();
   return payload();
 });
 

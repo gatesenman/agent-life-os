@@ -27,7 +27,7 @@ function BranchTree({ worlds, activeId, onSelect }) {
         const parentLane = w.parentId != null ? lane[w.parentId] : undefined;
         const active = w.worldId === activeId;
         return (
-          <g key={w.worldId} className={`lane ${active ? 'active' : ''}`} onClick={() => onSelect(w.worldId)} style={{ cursor: 'pointer' }}>
+          <g key={w.worldId} role="button" tabIndex={0} aria-label={`切换到${w.name}`} aria-pressed={active} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(w.worldId); } }} className={`lane ${active ? 'active' : ''}`} onClick={() => onSelect(w.worldId)} style={{ cursor: 'pointer' }}>
             <rect x={0} y={yy - LH / 2 + 4} width={W} height={LH - 8} rx="10" className="lane-bg" />
             {parentLane !== undefined && (
               <motion.path d={`M${x0},${y(parentLane)} C${x0 + 26},${y(parentLane)} ${x0 - 4},${yy} ${x0 + 22},${yy}`} fill="none" stroke={w.color} strokeWidth="1.5" strokeOpacity="0.7"
@@ -53,7 +53,7 @@ function Slider({ label, value, set, min = 0, max = 1, step = 0.05, fmt = (v) =>
   return <label className="slider"><span>{label}</span><input type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => set(+e.target.value)} /><b className="num">{fmt(value)}</b></label>;
 }
 
-function ForkPanel({ mv, src, c, godMode, onDone }) {
+export function ForkPanel({ mv, src, c, godMode, onDone }) {
   const snaps = src?.snapshots || [];
   const [at, setAt] = useState(src?.steps ?? 0);
   const [name, setName] = useState('');
@@ -61,7 +61,6 @@ function ForkPanel({ mv, src, c, godMode, onDone }) {
   const [frugality, setFrug] = useState(src?.genome.frugality ?? 0.5);
   const [risk, setRisk] = useState(src?.genome.risk_tolerance ?? 0.5);
   const [cap, setCap] = useState(src?.policy.dailyCapUsd ?? 10);
-  const [auto, setAuto] = useState(src?.policy.autoApproveBelowUsd ?? 0);
   const [disease, setDisease] = useState(src?.life?.config?.diseaseRate ?? 0.04);
   const [mutation, setMutation] = useState(src?.life?.config?.mutationRate ?? 0.02);
   const [disaster, setDisaster] = useState(src?.life?.config?.disasterRate ?? 0.02);
@@ -71,7 +70,7 @@ function ForkPanel({ mv, src, c, godMode, onDone }) {
   const atLabel = at >= src.steps ? `当前（第 ${src.steps} 步）` : `第 ${at} 步快照`;
   const go = async () => {
     setBusy(true);
-    const r = await c('fork', { fromId: src.worldId, atStep: at >= src.steps ? undefined : at, name: name || undefined, branchSeed: seed, genome: { frugality, risk_tolerance: risk }, policy: { dailyCapUsd: cap, autoApproveBelowUsd: auto }, life: { diseaseRate: disease, mutationRate: mutation, disasterRate: disaster } });
+    const r = await c('fork', { fromId: src.worldId, atStep: at >= src.steps ? undefined : at, name: name || undefined, branchSeed: seed, genome: { frugality, risk_tolerance: risk }, policy: { dailyCapUsd: cap, autoApproveBelowUsd: 0 }, life: { diseaseRate: disease, mutationRate: mutation, disasterRate: disaster } });
     setBusy(false); if (!r?.error) { setName(''); setSeed(Math.random().toString(36).slice(2, 8)); onDone?.(); }
   };
   return (
@@ -92,7 +91,6 @@ function ForkPanel({ mv, src, c, godMode, onDone }) {
         <Slider disabled={!godMode} label="节俭" value={frugality} set={setFrug} />
         <Slider disabled={!godMode} label="冒险" value={risk} set={setRisk} />
         <Slider disabled={!godMode} label="每日预算" value={cap} set={setCap} min={1} max={30} step={1} fmt={(v) => `$${v}`} />
-        <Slider disabled={!godMode} label="自动批准阈值" value={auto} set={setAuto} min={0} max={10} step={0.5} fmt={(v) => (v ? `< $${v}` : '关闭')} />
         <Slider disabled={!godMode} label="疫病率" value={disease} set={setDisease} min={0} max={0.3} step={0.01} />
         <Slider disabled={!godMode} label="突变率" value={mutation} set={setMutation} min={0} max={0.2} step={0.01} />
         <Slider disabled={!godMode} label="灾害率" value={disaster} set={setDisaster} min={0} max={0.2} step={0.01} />

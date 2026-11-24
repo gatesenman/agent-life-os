@@ -1,8 +1,8 @@
 import React from 'react';
 import { BookOpen, Archive, Clock, Gauge, ListChecks, Lightbulb, ScanSearch } from 'lucide-react';
 import { Card, Meter } from '../components/ui.jsx';
-const TAG = { diary: '日记', lesson: '教训', reflection: '反思', insight: '洞见' };
-const KIND = { thought: '思考', action: '动作', result: '结果', money: '收支', payment: '支付', human: '干预', system: '系统', error: '错误', life: '生命' };
+const TAG = { diary: '日记', lesson: '教训', reflection: '反思', insight: '洞见', talk: '对话' };
+const KIND = { thought: '思考', action: '动作', result: '结果', money: '收支', payment: '支付', human: '干预', system: '系统', error: '错误', life: '生命', talk: '对话', social: '社交' };
 export default function Memory({ s }) {
   const { persona, memory, world } = s;
   return (
@@ -14,7 +14,7 @@ export default function Memory({ s }) {
           </ol>
         </Card>
         <Card title="今日计划" icon={ListChecks} actions={<span className="muted small">{memory.plan ? `第 ${memory.plan.day} 天` : '待生成'}</span>}>
-          {memory.plan ? <ol className="plan-list">{memory.plan.items.map((t, i) => <li key={i}><span className="num">{String(i + 1).padStart(2, '0')}</span><p>{t}</p></li>)}</ol> : <div className="chart-empty">新的一天开始时，TA 会根据余额、饥饿和最近的洞见排好计划。</div>}
+          {memory.plan ? <ol className="plan-list">{memory.plan.items.map((t, i) => <li key={i}><span className="num">{String(i + 1).padStart(2, '0')}</span><p>{t}</p><span className={`tag ${memory.plan.tasks?.[i]?.status === 'done' ? 't-insight' : ''}`} title={memory.plan.tasks?.[i]?.evidence || '仅真实结果触发完成'}>{memory.plan.tasks?.[i]?.status === 'done' ? '已完成' : '待执行'}</span></li>)}</ol> : <div className="chart-empty">新的一天开始时，TA 会根据余额、饥饿和最近的洞见排好计划。</div>}
         </Card>
         <Card title="反思与洞见" icon={Lightbulb} actions={<span className="muted small num">已反思 {memory.reflections || 0} 次</span>}>
           <Meter label="反思压力（累计重要度 / 阈值）" value={(memory.pressure || 0) * 100} tone="soft" />

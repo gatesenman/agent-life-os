@@ -1,0 +1,10 @@
+
+> agent-life-os@0.7.0 smoke
+> node test/electron-smoke.js
+
+SMOKE_DESKTOP order=WM0001 status=awaiting hunger=0.89
+SMOKE_OK worlds=3 steps=123/43/40 violations=0 views=7
+[2572443:1124/122607.859897:ERROR:viz_main_impl.cc(181)] Exiting GPU process due to errors during initialization
+[2572513:1124/122608.025078:ERROR:viz_main_impl.cc(181)] Exiting GPU process due to errors during initialization
+✓ Electron 冒烟测试通过，截图：smoke.png 与 docs/screenshot-*.png
+✓ 界面源码、数据与渲染文本中没有 emoji

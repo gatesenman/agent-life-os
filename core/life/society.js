@@ -44,6 +44,10 @@ class Society {
     this.seed = String(seed); this.branchSeed = branchSeed; this.rngCalls = 0;
     const base = createRng(this.seed, 'society' + (branchSeed ? '::' + branchSeed : ''));
     this.rng = wrapRng(() => { this.rngCalls++; return base(); });
+    // 社交层使用独立随机流：不影响生育/死亡/经济轨迹（L6 可复现，且不扰动既有生命史）
+    const sbase = createRng(this.seed, 'social' + (branchSeed ? '::' + branchSeed : ''));
+    this.socialRngCalls = 0;
+    this.socialRng = wrapRng(() => { this.socialRngCalls++; return sbase(); });
     this.config = { ...DEFAULTS, ...clampConfig(config) };
     if (init) this.genesis(dna, persona);
   }
@@ -51,7 +55,8 @@ class Society {
   genesis(dna, persona) {
     const r = this.rng, c = this.config;
     this.year = 0; this.persons = {}; this.pseq = 0; this.events = []; this.eseq = 0; this.history = [];
-    this.counters = { founders: 0, births: 0, deaths: 0, mutations: 0, epidemics: 0, disasters: 0, conflicts: 0, collapses: 0, successions: 0 };
+    this.counters = { founders: 0, births: 0, deaths: 0, mutations: 0, epidemics: 0, disasters: 0, conflicts: 0, collapses: 0, successions: 0, talks: 0, rumors: 0 };
+    this.intel = []; this.talks = []; this.iseq = 0; this.tseq = 0;
     this.causes = {}; this.lowStability = 0;
     this.econ = { minted: 0, destroyed: 0, treasury: 0, priceIndex: 1, inflation: 0 };
     this.env = { renewable: 800, renewableCap: 1000, nonrenewable: 1000, prey: 400, predators: 40, anomaly: 0, entropy: 0, food: 1 };
@@ -71,6 +76,8 @@ class Society {
     this.mint(this.alive(), 20); // 初始禀赋：记为"创造"，保证 L10 账目成立
     this.pushHistory(true);
     this.emitLife('genesis', `纪元 0 年：${c.founders} 位始祖生活在这座城市，文明处于「${T.ERAS[T.effects(this.unlocked).era]}」。`);
+    this.addIntel({ kind: 'fact', text: `这座城市由 ${c.founders} 位始祖建立，文明处于「${T.ERAS[T.effects(this.unlocked).era]}」。`, topic: 'origin', originId: this.focusId, fidelity: 1, holders: this.alive().map((p) => p.id) });
+    this.refreshCivic(this.alive());
   }
 
   newPerson({ name, sex, born, gen, alleles, parents = null, founder = false, lineage = false, mutations = [], belief }) {
@@ -255,6 +262,8 @@ class Society {
     this.civ.stability = r4(clamp(this.civ.stability + (st - this.civ.stability) * 0.5 * dt, 0, 1));
     this.lowStability = this.civ.stability < 0.25 ? this.lowStability + dt : 0;
     if (this.lowStability >= 3 && this.unlocked.length > 2) this.collapse();
+    // —— 社交对话与信息传播（独立随机流，不改金钱/人口/死亡） ——
+    this.socialTick(dt, ctx, this.alive());
     // —— 承载与年度记录 ——
     if (Math.floor(this.year) !== Math.floor(prevYear)) this.pushHistory();
     this.lastPower = powerW;
@@ -322,7 +331,7 @@ class Society {
     const fx = T.effects(this.unlocked);
     this.history.push({ year: Math.floor(this.year), pop: n, gen: n ? Math.max(...people.map((p) => p.gen)) : 0, K: T.kardashev(n * this.config.populationScale * fx.epc), techs: this.unlocked.length,
       temp: r2(this.env.anomaly), renewable: Math.round(this.env.renewable), nonrenewable: Math.round(this.env.nonrenewable), prey: Math.round(this.env.prey), predators: Math.round(this.env.predators),
-      entropy: r2(this.env.entropy), stability: r2(this.civ.stability), price: r2(this.econ.priceIndex), vitality: mean('vitality'), curiosity: mean('curiosity'), intelligence: mean('intelligence'), deaths: this.counters.deaths, births: this.counters.births });
+      entropy: r2(this.env.entropy), stability: r2(this.civ.stability), price: r2(this.econ.priceIndex), vitality: mean('vitality'), curiosity: mean('curiosity'), intelligence: mean('intelligence'), deaths: this.counters.deaths, births: this.counters.births, literacy: r2(this.civ.literacy || 0), density: r2(this.civ.density || 0), circulation: r2(this.civ.circulation || 0), socialCapital: r2(this.civ.socialCapital || 0) });
     if (this.history.length > 360) this.history = this.history.filter((_, i) => i % 2 === 0 || i === this.history.length - 1);
     // 修剪：保留在世者、血脉成员；其余死者最多保留 500 条（计数器独立，不影响 L13）
     const dead = Object.values(this.persons).filter((p) => p.died !== null && !p.lineage && !p.founder);
@@ -403,13 +412,209 @@ class Society {
     return v;
   }
 
+  // ---------- 社交对话与信息传播（OASIS / AI Town / Smallville 启发） ----------
+  ensureSocial() {
+    if (!this.intel) this.intel = []; if (!this.talks) this.talks = [];
+    this.iseq = this.iseq || 0; this.tseq = this.tseq || 0;
+    this.counters.talks = this.counters.talks || 0; this.counters.rumors = this.counters.rumors || 0;
+  }
+  addIntel({ kind, text, topic, originId, sourceId, fidelity, holders }) {
+    this.ensureSocial();
+    const item = { id: 'i' + (++this.iseq), kind: kind === 'rumor' ? 'rumor' : 'fact', text: String(text || '').slice(0, 96), topic: topic || 'life', originId: originId || null, sourceId: sourceId || originId || null, fidelity: r4(clamp(fidelity ?? 1, 0, 1)), year: r2(this.year), holders: [...new Set(holders || [])].slice(0, 80) };
+    this.intel.push(item); if (this.intel.length > 80) this.intel.shift();
+    return item;
+  }
+  giveIntel(p, spec) {
+    if (!p || p.died !== null) return null;
+    const item = this.addIntel({ ...spec, holders: [p.id] });
+    return item;
+  }
+  knownBy(p) { return (this.intel || []).filter((i) => (i.holders || []).includes(p.id)); }
+  distort(text, r) {
+    const t = String(text || '');
+    const forms = ['听说' + t, t.replace(/(\d+)/, (m) => String(Math.max(0, Number(m) + (r.chance(0.5) ? 1 : -1))) || m), t + '——但细节可能不准确', '有人说' + t];
+    return forms[r.int(0, forms.length - 1)].slice(0, 96);
+  }
+  ingestEvents() {
+    const fresh = (this._pending || []).filter((e) => ['disaster', 'epidemic', 'tech', 'era', 'conflict', 'collapse', 'bounty', 'death'].includes(e.type));
+    for (const e of fresh) {
+      const item = this.addIntel({ kind: 'fact', text: e.text.replace(/^\[天启\]\s*/, '').slice(0, 96), topic: e.type, originId: e.who || null, fidelity: 1, holders: e.who ? [e.who] : this.alive().slice(0, 6).map((p) => p.id) });
+      if (e.who && !(item.holders || []).includes(e.who)) item.holders.push(e.who);
+    }
+  }
+  socialTick(dt, ctx, people) {
+    this.ensureSocial();
+    if (!people.length || !(dt > 0)) { this.refreshCivic(people || []); return; }
+    const r = this.socialRng;
+    this.ingestEvents();
+    const hour = ctx.hour ?? 12;
+    const groups = new Map();
+    for (const p of people) {
+      const type = p.id === this.focusId && hour >= 8.5 && hour < 18 && !(hour >= 12 && hour < 13) ? 'work' : P.scheduleType(hour, this.age(p), { belief: p.belief, sick: !!p.sick, extraversion: G.express(p, 'extraversion') });
+      const cand = this.places.filter((q) => q.type === type);
+      const own = type === 'home' ? p.home : type === 'work' ? p.work : null;
+      const place = (own && this.places.find((q) => q.id === own)) || cand[(parseInt(p.id.slice(1), 10) * 7) % Math.max(1, cand.length)] || this.places[0];
+      if (!place) continue;
+      const arr = groups.get(place.id) || []; arr.push(p); groups.set(place.id, arr);
+    }
+    const density = people.length / Math.max(1, this.places.length);
+    const rate = clamp(0.4 * dt * (0.5 + density / 6) * (0.4 + this.civ.cooperation), 0, 0.85);
+    let talks = 0, maxTalks = Math.min(8, 2 + Math.floor(people.length / 8));
+    for (const [placeId, group] of groups) {
+      if (group.length < 2 || talks >= maxTalks) continue;
+      const meets = Math.min(group.length >> 1, 3);
+      for (let i = 0; i < meets && talks < maxTalks; i++) {
+        if (!r.chance(rate)) continue;
+        const a = r.pick(group), b = r.pick(group); if (a === b) continue;
+        this.converse(a, b, placeId, r);
+        talks++;
+      }
+    }
+    this.pruneIntel();
+    this.refreshCivic(people);
+  }
+  converse(a, b, placeId, r) {
+    const pool = this.knownBy(a);
+    let payload;
+    if (pool.length) payload = { ...r.pick(pool) };
+    else {
+      const ev = (this.events || []).slice(-12).reverse().find((e) => !['talk', 'genesis'].includes(e.type));
+      payload = ev ? { kind: 'fact', text: ev.text.slice(0, 80), topic: ev.type, originId: a.id, fidelity: 0.9 } : { kind: 'fact', text: `${a.name} 与 ${b.name} 谈了谈近日的生活。`, topic: 'life', originId: a.id, fidelity: 0.8 };
+    }
+    const agr = 0.45 + 0.4 * G.express(b, 'agreeableness');
+    let fid = r4(clamp((payload.fidelity ?? 1) * agr * r.float(0.85, 1), 0, 1));
+    let kind = payload.kind, text = payload.text;
+    if (fid < 0.65) { kind = 'rumor'; text = this.distort(text, r); this.counters.rumors++; }
+    const item = this.addIntel({ kind, text, topic: payload.topic || 'life', originId: payload.originId || a.id, sourceId: a.id, fidelity: fid, holders: [b.id, a.id] });
+    // 合并持有者到同源条目（有限）
+    const same = (this.intel || []).find((i) => i.id !== item.id && i.text === item.text);
+    if (same) { same.holders = [...new Set([...(same.holders || []), a.id, b.id])].slice(0, 80); this.intel = this.intel.filter((i) => i !== item); }
+    this.counters.talks++;
+    const place = this.places.find((p) => p.id === placeId);
+    const rec = { id: 'tk' + (++this.tseq), year: r2(this.year), a: a.id, b: b.id, aName: a.name, bName: b.name, place: place?.name || '', text: item.text, kind: item.kind, fidelity: item.fidelity, source: 'agent' };
+    this.talks.push(rec); if (this.talks.length > 200) this.talks.shift();
+    // 心智微调（夹紧，遵守 L16）
+    a.needs.belong = r4(clamp(a.needs.belong + 0.02, 0, 1)); b.needs.belong = r4(clamp(b.needs.belong + 0.02, 0, 1));
+    a.emo.joy = r4(clamp(a.emo.joy + 0.02, 0, 1)); b.emo.joy = r4(clamp(b.emo.joy + 0.02, 0, 1));
+    const notable = a.id === this.focusId || b.id === this.focusId || item.kind === 'rumor' && ['disaster', 'epidemic', 'conflict', 'collapse'].includes(item.topic);
+    if (notable) this.emitLife('talk', `${a.name} 在${place?.name || '某处'}对 ${b.name} 说：「${item.text}」${item.kind === 'rumor' ? '（传闻，完整度 ' + Math.round(item.fidelity * 100) + '%）' : '。'}`, { a: a.id, b: b.id, intel: item.id, kind: item.kind });
+    return rec;
+  }
+  pruneIntel() {
+    if (!this.intel) return;
+    const alive = new Set(this.alive().map((p) => p.id));
+    for (const i of this.intel) i.holders = (i.holders || []).filter((id) => alive.has(id));
+    this.intel = this.intel.filter((i) => i.holders.length || this.year - i.year < 2);
+  }
+  refreshCivic(people) {
+    const n = (people || this.alive()).length || 1;
+    const list = people || this.alive();
+    this.civ.literacy = r4(list.reduce((s, p) => s + (p.education || 0), 0) / n);
+    this.civ.density = r4(n / Math.max(1, (this.places || []).length));
+    this.civ.institutionCount = (this.places || []).filter((p) => ['hospital', 'school', 'culture'].includes(p.type)).length;
+    this.civ.urban = r4(clamp(n / Math.max(1, (this.places || []).filter((p) => p.type === 'home').length * 8), 0, 2));
+    const cov = this.intel && this.intel.length ? this.intel.reduce((s, i) => s + (i.holders || []).length, 0) / (this.intel.length * n) : 0;
+    this.civ.circulation = r4(clamp(cov, 0, 1));
+    this.civ.socialCapital = r4(clamp((this.civ.cooperation || 0) * (this.civ.institutions || 0) * (1 - this.gini(list) * 0.5), 0, 1));
+  }
+  districts({ hour = 12 } = {}) {
+    const buckets = new Map();
+    const cell = 250;
+    for (const pl of this.places || []) {
+      const key = `${Math.round(pl.x / cell)}_${Math.round(pl.z / cell)}`;
+      const d = buckets.get(key) || { id: 'd' + key, x: 0, z: 0, n: 0, places: [], types: {}, population: 0 };
+      d.places.push({ id: pl.id, type: pl.type, name: pl.name }); d.types[pl.type] = (d.types[pl.type] || 0) + 1; d.x += pl.x; d.z += pl.z; d.n++;
+      buckets.set(key, d);
+    }
+    const people = this.alive();
+    const loc = new Map();
+    for (const p of people) {
+      const type = P.scheduleType(hour, this.age(p), { belief: p.belief, sick: !!p.sick, extraversion: G.express(p, 'extraversion') });
+      const cand = (this.places || []).filter((q) => q.type === type);
+      const own = type === 'home' ? p.home : type === 'work' ? p.work : null;
+      const place = (own && this.places.find((q) => q.id === own)) || cand[(parseInt(p.id.slice(1), 10) * 7) % Math.max(1, cand.length)];
+      if (place) loc.set(place.id, (loc.get(place.id) || 0) + 1);
+    }
+    const AXIS = (x, z) => (z <= 0 ? '北' : '南') + (x >= 0 ? '东' : '西') + '区';
+    return [...buckets.values()].map((d, i) => {
+      d.x = r2(d.x / d.n); d.z = r2(d.z / d.n);
+      d.population = d.places.reduce((s, p) => s + (loc.get(p.id) || 0), 0);
+      d.name = AXIS(d.x, d.z) + (d.types.culture ? '（文化）' : d.types.hospital ? '（医疗）' : d.types.school ? '（学区）' : '');
+      d.institutions = (d.types.hospital || 0) + (d.types.school || 0) + (d.types.culture || 0);
+      d.density = r4(d.population / Math.max(1, d.places.length));
+      d.index = i;
+      delete d.n;
+      return d;
+    }).sort((a, b) => b.population - a.population);
+  }
+  composeReply(p, text, ctx = {}) {
+    const t = String(text || '');
+    const stage = p.died !== null ? '已故' : stageOf(this.age(p));
+    const mood = p.mood >= 0.2 ? '还算平静' : p.mood < -0.2 ? '有些低落' : '说不上好坏';
+    const known = this.knownBy(p).slice(-3);
+    if (/饿|吃饭|外卖|食物/.test(t)) return ctx.hunger >= 0.6 && p.id === this.focusId ? `我现在确实饿了（大约 ${Math.round((ctx.hunger || 0) * 100)}%），想点一份外卖，但花钱必须先请你批准。` : `民以食为天。城里的粮食收成${(this.env.food || 1) >= 1 ? '还过得去' : '有些紧张'}。`;
+    if (/钱|钱包|工作|赚钱|余额/.test(t)) return p.id === this.focusId ? `我这台电脑上的钱包余额是 $${(ctx.balance ?? 0).toFixed?.(2) ?? ctx.balance}，社会里我还有 ${r2(p.wealth)} 粮币。合法赚钱，花钱问你。` : `我手里还有 ${r2(p.wealth)} 粮币，日子${p.wealth > 8 ? '过得去' : '紧巴巴的'}。`;
+    if (/谁|家人|父母|孩子|伴侣/.test(t)) {
+      const partner = p.partner && this.persons[p.partner] ? this.persons[p.partner].name : null;
+      const kids = (p.children || []).map((id) => this.persons[id]).filter(Boolean);
+      return `我是${p.name}，第 ${p.gen} 代，${Math.floor(this.age(p))} 岁。${partner ? '伴侣是' + partner + '。' : '眼下没有伴侣。'}${kids.length ? '有 ' + kids.length + ' 个孩子。' : ''}`;
+    }
+    if (/死|死亡|瘟疫|灾害|病/.test(t)) return p.sick ? `我正患着${p.sick.name}，有些害怕。` : `人都会死，这是这个世界的定律。最近${this.counters.epidemics ? '有过疫病。' : this.counters.disasters ? '有过天灾。' : '还算平安。'}`;
+    if (/你好|您好|在吗|嗨/.test(t)) return `我在。我是${p.name}，${stage}，今天心情${mood}。`;
+    if (/计划|今天|在做/.test(t) && p.id === this.focusId) return ctx.plan ? `今天我想：${ctx.plan}。` : '先把眼前的事做完，再看接下来。';
+    if (/传闻|谣言|听说|消息|新闻/.test(t)) {
+      if (known.length) return `我最近听说：「${known[known.length - 1].text}」${known[known.length - 1].kind === 'rumor' ? '——不一定全是真的。' : '。'}`;
+      return '最近没有什么特别的消息传到我这里。';
+    }
+    const belief = BELIEFS[p.belief] || '自己的想法';
+    const news = known.length ? `对了，我最近听说：「${known[known.length - 1].text}」。` : '';
+    return `我是${p.name}（${stage}，信${belief}）。你刚才说「${t.slice(0, 24)}」，我记下了。我现在心情${mood}，健康 ${Math.round((p.health || 0) * 100)}%。${news}`;
+  }
+  talkTo(personId, text, ctx = {}) {
+    this.ensureSocial();
+    const p = this.persons[personId]; if (!p) throw new Error('这个人不存在');
+    if (p.died !== null) throw new Error(`${p.name} 已经去世，不能再对话（L8 必死律）`);
+    const msg = String(text || '').trim().slice(0, 400); if (!msg) throw new Error('请输入要对 TA 说的话');
+    const previous = this.talks.filter((r) => r.a === 'human' && r.b === personId).slice(-1)[0];
+    const reply = previous && /记得|上次|之前/.test(msg) ? `我记得你上次对我说：「${previous.text}」。这是观察者的话，不是已经验证的世界事实。` : this.composeReply(p, msg, ctx);
+    this.giveIntel(p, { kind: 'fact', text: `观察者说：${msg.slice(0, 48)}`, topic: 'observer', originId: 'human', fidelity: 1 });
+    p.needs.belong = r4(clamp((p.needs.belong || 0) + 0.06, 0, 1));
+    p.emo.joy = r4(clamp((p.emo.joy || 0) + 0.05, 0, 1));
+    p.mood = r4(clamp((p.emo.joy || 0) - (p.emo.sadness || 0) - 0.5 * (p.emo.fear || 0) - 0.3 * (p.emo.anger || 0), -1, 1));
+    const rec = { id: 'tk' + (++this.tseq), year: r2(this.year), a: 'human', b: p.id, aName: '观察者', bName: p.name, place: '观察舱', text: msg, reply, kind: 'talk', fidelity: 1, source: 'human', replySource: 'rules', previousId: previous?.id || null };
+    this.talks.push(rec); if (this.talks.length > 200) this.talks.shift();
+    this.counters.talks++;
+    const ev = this.emitLife('talk', `观察者对 ${p.name} 说：「${msg.slice(0, 40)}」。${p.name} 答：「${reply.slice(0, 40)}」。`, { who: p.id, god: false, human: true });
+    rec.eventId = ev.id;
+    return rec;
+  }
+  directory() {
+    const people = this.alive().slice().sort((a, b) => (b.id === this.focusId) - (a.id === this.focusId) || (b.lineage || 0) - (a.lineage || 0) || a.born - b.born);
+    return people.slice(0, 48).map((p) => ({ id: p.id, name: p.name, age: Math.floor(this.age(p)), stage: stageOf(this.age(p)), gen: p.gen, focus: p.id === this.focusId, lineage: !!p.lineage, belief: BELIEFS[p.belief], home: this.places.find((q) => q.id === p.home)?.name || '', work: this.places.find((q) => q.id === p.work)?.name || '' }));
+  }
+  socialView() {
+    this.ensureSocial();
+    const facts = this.intel.filter((i) => i.kind === 'fact').length, rumors = this.intel.filter((i) => i.kind === 'rumor').length;
+    return {
+      talks: this.counters.talks, rumors: this.counters.rumors, circulating: this.intel.length, facts, rumorCount: rumors,
+      circulation: this.civ.circulation || 0, literacy: this.civ.literacy || 0, density: this.civ.density || 0, socialCapital: this.civ.socialCapital || 0, urban: this.civ.urban || 0, institutionCount: this.civ.institutionCount || 0,
+      recent: this.talks.slice(-24).reverse(), intel: this.intel.slice(-16).reverse().map((i) => ({ id: i.id, kind: i.kind, text: i.text, topic: i.topic, fidelity: i.fidelity, year: i.year, holders: (i.holders || []).length })),
+      directory: this.directory(),
+    };
+  }
+
   // ---------- 序列化（快照 / 分叉） ----------
-  serialize() { const { rng, _pending, stepBirths, ...rest } = this; return JSON.parse(JSON.stringify(rest)); }
+  serialize() { const { rng, socialRng, _pending, stepBirths, ...rest } = this; return JSON.parse(JSON.stringify(rest)); }
   static restore(state, { branchSeed, config } = {}) {
     const s = new Society({ seed: state.seed, branchSeed: branchSeed ?? state.branchSeed, init: false });
-    const { seed, branchSeed: _b, rngCalls, rng, ...rest } = state;
+    const { seed, branchSeed: _b, rngCalls, rng, socialRng, socialRngCalls = 0, ...rest } = state;
     Object.assign(s, JSON.parse(JSON.stringify(rest)));
-    if ((branchSeed ?? state.branchSeed) === state.branchSeed) for (let i = 0; i < rngCalls; i++) s.rng();
+    s.intel = s.intel || []; s.talks = s.talks || []; s.iseq = s.iseq || 0; s.tseq = s.tseq || 0;
+    s.counters.talks = s.counters.talks || 0; s.counters.rumors = s.counters.rumors || 0;
+    if ((branchSeed ?? state.branchSeed) === state.branchSeed) {
+      for (let i = 0; i < rngCalls; i++) s.rng();
+      for (let i = 0; i < (socialRngCalls || 0); i++) s.socialRng();
+    }
     if (config) s.setConfig(config);
     return s;
   }
@@ -464,7 +669,8 @@ class Society {
       year: r2(this.year), yearInt: Math.floor(this.year), season: r2(season), config: this.config, configSpec: CONFIG_SPEC,
       population: n, counters: this.counters, causes: this.causes, ended: !this.focusId,
       focus: this.personView(f), env: this.env, econ: { ...this.econ, gini: this.gini(people), meanWealth: n ? r2(people.reduce((s, p) => s + p.wealth, 0) / n) : 0 },
-      civ: { ...this.civ, era: T.ERAS[fx.era], eraIndex: fx.era, K: T.kardashev(power), power, unlocked: this.unlocked, research: r2(this.research), next: T.available(this.unlocked).sort((a, b) => a.cost - b.cost).slice(0, 3).map((t) => ({ id: t.id, name: t.name, cost: t.cost })) },
+      civ: { ...this.civ, era: T.ERAS[fx.era], eraIndex: fx.era, K: T.kardashev(power), power, unlocked: this.unlocked, research: r2(this.research), next: T.available(this.unlocked).sort((a, b) => a.cost - b.cost).slice(0, 3).map((t) => ({ id: t.id, name: t.name, cost: t.cost })), districts: this.districts({ hour, day }) },
+      social: this.socialView(),
       beliefs: Object.fromEntries(Object.keys(BELIEFS).map((k) => [BELIEFS[k], people.filter((p) => p.belief === k).length])),
       clans: Object.entries(people.reduce((m, p) => { m[p.name[0]] = (m[p.name[0]] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 6),
       history: this.history.slice(-160), events: this.events.slice(-80), worldEvents: this.events.filter((e) => !['birth', 'death', 'union', 'succession', 'genesis'].includes(e.type)).slice(-40), generations: this.generations(), family: this.familyTree(),

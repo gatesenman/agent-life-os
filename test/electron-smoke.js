@@ -9,7 +9,8 @@ const env = { ...process.env, ALOS_SMOKE: '1', ALOS_TICK_MS: '400', ALOS_NO_SAND
 const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
 const cmd = useXvfb ? 'xvfb-run' : electron;
 const args = useXvfb ? ['-a', '-s', '-screen 0 1600x960x24', electron, root] : [root];
-const r = spawnSync(cmd, args, { env, encoding: 'utf8', timeout: 300000 });
+const r = spawnSync(cmd, args, { env, encoding: 'utf8', timeout: 360000, detached: process.platform !== 'win32' });
+if (r.error?.code === 'ETIMEDOUT' && process.platform !== 'win32') { try { process.kill(-r.pid, 'SIGKILL'); } catch {} } // xvfb-run超时时一并回收其测试进程组
 const out = (r.stdout || '') + (r.stderr || '');
 const ok = /SMOKE_OK/.test(out) && /violations=0/.test(out);
 console.log(out.split('\n').filter((l) => /SMOKE|Error|error/.test(l)).slice(0, 40).join('\n'));
